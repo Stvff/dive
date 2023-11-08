@@ -1,0 +1,31 @@
+q, p: s64, u64;
+
+a, b: s64, s64;
+a = 6;
+e = c;
+e = uwu;
+
+b = add 34 44;
+place :: {};
+ff :: 55;
+e: s64;
+e = add b ff;
+c = add a e;
+e = sub 1000 c;
+ifn e place2;
+skip place2;
+place2 :: {
+	ifn c place;
+}
+c: s64;
+
+e = cast awa;
+e = cast 44e3;
+c = add a e;
+
+
+e c = c e;
+e c = 6 e;
+c e a b q = ff 6 q b b;
+
+uwu awa :: 33 44e3;

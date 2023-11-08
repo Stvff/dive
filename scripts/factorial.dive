@@ -1,0 +1,19 @@
+
+total: u64;
+total = call factorial 10;
+
+factorial :: (n: u64 -- m: u64) {
+	is_zero: u8;
+	is_zero = equ n 0;
+	if is_zero base_case;
+
+	m = sub n 1;
+	m = call factorial m;
+	m = mul n m;
+	return;
+
+	base_case :: {
+		m = 1;
+		return;
+	}
+}

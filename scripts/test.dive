@@ -1,0 +1,37 @@
+q, p: s64, u64;
+q p = call bod O P;
+call one;
+
+bod :: (arg: s64; aarg: s64 -- c: s64; d: u64) {
+	a, b: s64, s64;
+	a = 6;
+	b = add 34 44;
+	ff :: 55;
+	e: s64;
+	place :: {
+		e = add b ff;
+		c = add a e;
+		e = sub 1000 c;
+		less_thanz: u8;
+		less_thanz = grows e 0;
+		if less_thanz place;
+	}
+	d = cast c;
+	return;
+}
+
+O P :: -3 100;
+
+one :: () {
+	thing: s32;
+	thing = add thing -1;
+	two :: {
+		thing2: s64;
+		thing2 = sub thing2 33;
+	}
+}
+
+aaa, ppp: f64, ptr;
+ppp = addr aaa;
+aaa = read ppp;
+write ppp, aaa;

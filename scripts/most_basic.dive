@@ -1,0 +1,8 @@
+limit :: 10;
+i: s32;
+loop :: {
+	i = add i 1;
+	in_bounds: u8;
+	in_bounds = grows i limit;
+	if in_bounds loop;
+}
