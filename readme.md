@@ -4,7 +4,7 @@ Dive is an imperative procedural language, that lives just on the edge of being 
 This means that instead of jumping to or calling labels, all code blocks in Dive are named and typechecked (so you can't jump to a procedure or call a basic block)
 Furthermore, variables are statically and strongly typed with a basic typesystem. Procedure calls are pass-by-value.
 
-As it is now, it is a very limited language, but I hope to add many things to bring it up to modern standards (see the `Todo` section).
+As it is now, it is a very limited language, but I hope to add many things to bring it up to modern standards ([see the 'Todo' section](#to_do)).
 ```
 total: u64;
 total = call factorial 10;
@@ -71,20 +71,22 @@ names = instruction values;
 instruction values;
 ```
 All instructions are: `cast`, `read`, `write`, `addr`, `call`, `return`, `add`, `sub`, `mul`, `div`, `grows`, `shnks`, `equ`, `if`, `ifn` and `skip`.\
-The section 'Instructions' contains a table that goes over what each one needs and does.
+The [section 'Instructions'](#instructions) contains a table that goes over what each one needs and does.
 
 Lastly, there are two kinds of code blocks. Procedures, and basic blocks (or just 'blocks').
 A basic block is a set of statements surrounded by curly braces, as in this example:
 ```
+c: f32;
+c = 1e10;
 name :: {
 	a, b: f32, f32;
 	a = call some_procedure;
-	b = mul a a;
+	b = mul a c;
 }
 ```
 New variables and definitions (including more blocks or procedures) can be made inside of a block, and it can refer to variables and definitions of the scopes above it,
 however, variables and labels above the procedure scope that the block is defined in, can not be used. Instructions that use block labels are `if`, `ifn` and `skip`.
-When a program 'jumps' to a basic block, it starts executing the instructions in the block, and when the end is reached,
+When a program 'jumps' to a basic block, or when the program naturally enters it, it starts executing the instructions in the block, and when the end is reached,
 it continues with the instructions that are defined after the block, and not the instructions after the jump. In other words, basic blocks don't return.
 
 Procedures are code blocks that take and return arguments, and make their own stack frame.
@@ -95,24 +97,27 @@ name :: (input_declerations -- output_declerations) {
 }
 ```
 Both input and output parameters are named variables. A procedure can be prematurely exited with the `return` instruction. Unlike basic blocks, procedures do return to the callsite.\
-The `call` instruction is used to call procedures. As its first argument, it takes the procedure name, and its arguments must match procedure's input parameters, as must the variables it assigns to.
+The `call` instruction is used to call procedures. As its first argument, `call` takes the procedure name.
+The arguments after that must match procedure's input parameters. Similarly, the variables that the `call` statement assigns to, must match the procedure's output parameters.
+
+Inputs and outputs are seperated with a double hyphen `--`. When there are no outputs, the seperator is optional.
 Some examples:
 ```
 to_be_five: s64;
 to_be_five = call returns_five;
 returns_five :: (-- five: s64) {
 	five = 5;
-	return;
 }
 ```
 ```
-call doesnt 5;
-doesnt :: (a: s64) {
-	a = mul a a;
+call doesnt 5 6;
+doesnt :: (a: s64; b: s64) {
+	a = mul a b;
 }
 ```
+As parameter declerations are decleration statements, they are seperated by semicolons.
 
-## Todo's
+## To do
 * bugfixes and a lot of testing
 * syscalls
 * `import`
@@ -139,8 +144,8 @@ doesnt :: (a: s64) {
 |`grows` | an integer (1 or 0)   | two numbers of the same type | checks if the two arguments are increasing, when read from left to right, and returns 1 if they are |
 |`shnks` | an integer (1 or 0)   | two numbers of the same type | checks if the two arguments are decreasing, when read from left to right, and returns 1 if they are |
 |`equ`   | an integer (1 or 0)   | two numbers of the same type | checks if the two arguments are equal, and returns 1 if they are |
-|`if`    | nothing               | any number and a label       | jumps to the label if its first argument is not equal to zero |
-|`ifn`   | nothing               | any number and a label       | jumps to the label if its first argument is equal to zero |
+|`if`    | nothing               | any number and a label       | jumps to the label if its first argument is not equal to zero; 'jump if true' |
+|`ifn`   | nothing               | any number and a label       | jumps to the label if its first argument is equal to zero; 'jump if not true' |
 |`skip`  | nothing               | a label                      | jumps to the end of the basic block that the label refers to |
 
 ## Building and usage
