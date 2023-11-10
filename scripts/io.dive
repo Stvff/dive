@@ -1,0 +1,69 @@
+Stdin  :: 0;
+Stdout :: 1;
+Stderr :: 2;
+
+echo :: {
+	data: ptr;
+	letter: byte;
+	res, err: s64, s32;
+	data = addr letter;
+
+	loop :: {
+		res, err = call read_file Stdin, data, 1;
+		res, err = call write_file Stdout, data, 1;
+
+		is_question_mark: u8;
+		is_question_mark = equ letter, 63;
+		ifn is_question_mark, loop;
+	}
+	letter = 10;
+	res, err = call write_file Stdout, data, 1;
+}
+
+read_file :: (file_descriptor: s32; data: ptr; length_in_bytes: s64 -- result: s64; errno: s32) {
+	SYS_read :: 0;
+	is_ok: u8;
+
+	result = syscall SYS_read, file_descriptor, data, length_in_bytes;
+	is_ok = grows -1, result;
+	if is_ok, exit_norminally;
+
+	exit_with_error :: {
+		errno = cast result;
+		errno = mul -1, errno;
+		result = 0;
+		return;
+	}
+
+	exit_norminally :: {
+		return;
+	}
+}
+
+write_file :: (file_descriptor: s32; data: ptr; length_in_bytes: s64 -- result: s64; errno: s32) {
+	SYS_write :: 1;
+	is_ok: u8;
+
+	result = syscall SYS_write, file_descriptor, data, length_in_bytes;
+	is_ok = grows -1, result;
+	if is_ok, exit_norminally;
+
+	exit_with_error :: {
+		errno = cast result;
+		errno = mul -1, errno;
+		result = 0;
+		return;
+	}
+
+	exit_norminally :: {
+		return;
+	}
+}
+
+SYS_open  :: 2;
+SYS_close :: 3;
+SYS_stat  :: 4;
+SYS_fstat :: 5;
+SYS_lstat :: 6;
+SYS_poll  :: 7;
+SYS_lseek :: 8;

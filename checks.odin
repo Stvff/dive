@@ -72,14 +72,14 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					continue main_loop
 				}
 				t := desired[0]
-				if .T_BYTE <= t && t <= .T_S64 {
+				if (.T_BYTE <= t && t <= .T_S64) || t == .T_INT {
 					_, is_int := q.(int)
 					if !is_int {
 						print_error("Integer literal was expected, but not given.", left_poslens[0], true)
 						print_error("This value literal does not represent an integer:", right_poslens[0])
 						err = true
 					}
-				} else if t == .T_F32 || t == .T_F64 {
+				} else if t == .T_F32 || t == .T_F64 || t == .T_FLOAT {
 					_, is_float := q.(f64)
 					if !is_float {
 						print_error("Float literal was expected, but not given.", left_poslens[0], true)
@@ -104,14 +104,14 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					continue main_loop
 				}
 				t := desired[0]
-				if decf.type == .T_INT {
-					if .T_BYTE > t || t > .T_S64 {
+				if (.T_BYTE <= decf.type && decf.type <= .T_S64) || decf.type == .T_INT {
+					if !(.T_BYTE <= t && t <= .T_S64) && t != .T_INT {
 						print_error("Floating point value was expected, but not given.", left_poslens[0], true)
 						print_error("This constant does not contain a floating point value:", right_poslens[0])
 						err = true
 					}
-				} else if decf.type == .T_FLOAT {
-					if t != .T_F32 && t != .T_F64 {
+				} else if decf.type == .T_FLOAT || decf.type == .T_F32 || decf.type == .T_F64 {
+					if t != .T_F32 && t != .T_F64 && t != .T_FLOAT {
 						print_error("Integer value was expected, but not given.", left_poslens[0], true)
 						print_error("This constant does not contain an integer value:", right_poslens[0])
 						err = true
@@ -134,6 +134,14 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					/* IDEA: Limit what types can be cast to what other types. */
 					if len(expression) != 2 || len(desired) != 1 {
 						print_error("`cast` takes and produces 1 value.", right_poslens[0])
+						err = true
+						continue main_loop
+					}
+					expression = expression[1:]
+					right_poslens = right_poslens[1:]
+				case .I_TRANS:
+					if len(expression) != 2 || len(desired) != 1 {
+						print_error("`trans` takes and produces 1 value.", right_poslens[0])
 						err = true
 						continue main_loop
 					}
@@ -304,13 +312,13 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					right_poslens = right_poslens[2:]
 				case .I_IF, .I_IFN:
 					if len(expression) != 3 || len(desired) != 0 {
-						print_error("`if` and `ifn` take a value and a label and produces no value.", right_poslens[0])
+						print_error("`if` and `ifn` take a value and a label and produce no value.", right_poslens[0])
 						err = true
 						continue main_loop
 					}
 					expd_type := type_of_valthing(expression[1], scope)
 					if check_expression(scope, {expd_type, .T_BLOC}, expression[1:], {right_poslens[0], right_poslens[0]}, right_poslens[1:]) {
-						print_error("`if` and `ifn` take a value and a label and produces no value.", right_poslens[0])
+						print_error("`if` and `ifn` take a value and a label and produce no value.", right_poslens[0])
 						err = true
 						continue main_loop
 					}
@@ -332,6 +340,15 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 				case .I_LABEL:
 					expression = expression[1:]
 					right_poslens = right_poslens[1:]
+				case .I_SYSCALL:
+					if len(expression) < 2 || len(expression) > 8 || len(desired) != 1 {
+						print_error("`syscall` takes anywhere from 1 to 6 arguments, and produces 1 value.", right_poslens[0])
+						err = true
+						continue main_loop
+					}
+					l := len(expression) - 1
+					expression = expression[l:]
+					right_poslens = right_poslens[l:]
 				}
 			case ^Scope:
 				print_error("Scope in expressions are not yet implemented.", right_poslens[0])
@@ -368,7 +385,7 @@ visible_decfined :: proc(scope: ^Scope, name: Name, variables_allowed := true) -
 	variables_allowed := variables_allowed
 	decf, exists := scope.decfineds[name]
 	if !exists {
-		/* IDEA: Variables in global scope might still be referenceable? */
+		/* IDEA: Variables in global scope might still be referenceable? Might make a `static` type modifier for this. */
 		/* FIXME: Disallow labels from scopes above the procedure line. */
 		if scope.scope_above != nil {
 			if scope.kind == .PROC do variables_allowed = false

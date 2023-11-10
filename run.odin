@@ -1,5 +1,7 @@
 package dive
 
+import "core:intrinsics"
+
 /* TODO: make all instructions that rely on registers implicitly do that explicitly.
          examples are: add, sub, mul, div, if, ifn */
 run :: proc(program: []Tac) #no_bounds_check {
@@ -19,8 +21,8 @@ run :: proc(program: []Tac) #no_bounds_check {
 		a0 := program[ip].args[0]
 		a1 := program[ip].args[1]
 		a2 := program[ip].args[2]
-		printf("ip: 0x%x, sp: 0x%x, stack_allocated: 0x%x\n", ip, 8*sp, 8*stack_allocated)
-		print_tac(program[ip])
+//		printf("ip: 0x%x, sp: 0x%x, stack_allocated: 0x%x\n", ip, 8*sp, 8*stack_allocated)
+//		print_tac(program[ip])
 	switch op_code {
 	case .ERR:
 		panic("error instruction")
@@ -110,15 +112,21 @@ run :: proc(program: []Tac) #no_bounds_check {
 		p := cast(^[8]byte) stack[sp + a0.i/8].ptr_8B
 		p^ = stack[sp + a1.i/8].eight_byte
 	case .ADDR:
-		stack[sp + a0.i/8].ptr_8B = &stack[sp + a0.i/8]
+		stack[sp + a0.i/8].ptr_8B = &stack[sp + a1.i/8].eight_byte[a1.i%8]
 
 /* procedure calling and stack handling */
 	case .WINDUP:
 		sp += a0.i
 		stack[sp].i = sp - a0.i
 		stack[sp + 1].i = ip + a1.i + 1
-	/* FIXME: has to raise an error when out of mem */
+  	/* FIXME: has to raise an error when out of mem */
 	case .PUSH:
+		ZERO_WORD :: Word{}
+		stack_slice := stack[stack_allocated:stack_allocated + a0.i]
+		stack_slice[0] = ZERO_WORD
+		for i := 1; i < len(stack_slice); i *= 2 {
+			copy(stack_slice[i:], stack_slice[:i])
+		}
 		stack_allocated += a0.i
 	case .POP:
 		stack_allocated -= a0.i
@@ -210,6 +218,48 @@ run :: proc(program: []Tac) #no_bounds_check {
 		ip = a0.i - 1
 	case .DYN_JUMP:
 		ip = stack[sp + a0.i/8].i - 1
+
+	case .SYSCALL_0:
+		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B)
+	case .SYSCALL_1:
+		base := sp + regs[a2.i].i/8
+		sys_arg1 := stack[base].uptr_8B
+		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1)
+	case .SYSCALL_2:
+		base := sp + regs[a2.i].i/8
+		sys_arg1 := stack[base].uptr_8B
+		sys_arg2 := stack[base + 1].uptr_8B
+		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1, sys_arg2)
+	case .SYSCALL_3:
+		base := sp + regs[a2.i].i/8
+		sys_arg1 := stack[base].uptr_8B
+		sys_arg2 := stack[base + 1].uptr_8B
+		sys_arg3 := stack[base + 2].uptr_8B
+		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1, sys_arg2, sys_arg3)
+	case .SYSCALL_4:
+		base := sp + regs[a2.i].i/8
+		sys_arg1 := stack[base].uptr_8B
+		sys_arg2 := stack[base + 1].uptr_8B
+		sys_arg3 := stack[base + 2].uptr_8B
+		sys_arg4 := stack[base + 3].uptr_8B
+		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1, sys_arg2, sys_arg3, sys_arg4)
+	case .SYSCALL_5:
+		base := sp + regs[a2.i].i/8
+		sys_arg1 := stack[base].uptr_8B
+		sys_arg2 := stack[base + 1].uptr_8B
+		sys_arg3 := stack[base + 2].uptr_8B
+		sys_arg4 := stack[base + 3].uptr_8B
+		sys_arg5 := stack[base + 4].uptr_8B
+		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1, sys_arg2, sys_arg3, sys_arg4, sys_arg5)
+	case .SYSCALL_6:
+		base := sp + regs[a2.i].i/8
+		sys_arg1 := stack[base].uptr_8B
+		sys_arg2 := stack[base + 1].uptr_8B
+		sys_arg3 := stack[base + 2].uptr_8B
+		sys_arg4 := stack[base + 3].uptr_8B
+		sys_arg5 := stack[base + 4].uptr_8B
+		sys_arg6 := stack[base + 5].uptr_8B
+		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1, sys_arg2, sys_arg3, sys_arg4, sys_arg5, sys_arg6)
 
 	case .DONE:
 		break main_loop

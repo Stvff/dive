@@ -1,0 +1,59 @@
+map_no_file   :: -1;
+map_prot_READ      :: 0;
+map_prot_WRITE     :: 1;
+map_prot_EXEC      :: 2;
+map_prot_SEM       :: 3;
+map_prot_GROWSDOWN :: 24;
+map_prot_GROWSUP   :: 25;
+
+map_flag_SHARED          :: 0;
+map_flag_PRIVATE         :: 1;
+map_flag_SHARED_VALIDATE :: 2;
+map_flag_FIXED           :: 4;
+map_flag_ANONYMOUS       :: 5;
+map_flag_GROWSDOWN       :: 8;
+map_flag_DENYWRITE       :: 11;
+map_flag_EXECUTABLE      :: 12;
+map_flag_LOCKED          :: 13;
+map_flag_NORESERVE       :: 14;
+map_flag_POPULATE        :: 15;
+map_flag_NONBLOCK        :: 16;
+map_flag_STACK           :: 17;
+map_flag_HUGETLB         :: 18;
+map_flag_SYNC            :: 19;
+map_flag_FIXED_NOREPLACE :: 20;
+map_flag_UNINITIALIZED   :: 26;
+
+mmap :: (address: ptr; size: u64; protection_flags: s32; flags: s32; file_descriptor: s32; offset: s32 -- mapped_address: ptr; errno: s32) {
+	SYS_mmap :: 9;
+	is_ok: u8;
+
+	mapped_address = syscall SYS_mmap address, size, protection_flags, flags, file_descriptor, offset;
+	errno = trans mapped_address;
+	is_ok = grows -1 errno;
+	if is_ok, exit_norminally;
+
+	exit_with_error :: {
+		zeroed_ptr: ptr;
+		mapped_address = zeroed_ptr;
+		errno = mul -1, errno;
+		return;
+	}
+
+	exit_norminally :: {
+		errno = 0;
+		return;
+	}
+}
+
+munmap :: (address: ptr; size: u64 -- errno: s32) {
+	SYS_munmap :: 11;
+	errno = syscall SYS_munmap address, size;
+	errno = mul -1, errno;
+}
+
+mprotect :: (address: ptr; size: u64; protection_flags: s32 -- errno: s32) {
+	SYS_mprotect :: 10;
+	errno = syscall SYS_mprotect address, size, protection_flags;
+	errno = mul -1, errno;
+}

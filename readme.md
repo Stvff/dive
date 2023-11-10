@@ -4,7 +4,7 @@ Dive is an imperative procedural language, that lives just on the edge of being 
 This means that instead of jumping to or calling labels, all code blocks in Dive are named and typechecked (so you can't jump to a procedure or call a basic block)
 Furthermore, variables are statically and strongly typed with a basic typesystem. Procedure calls are pass-by-value.
 
-As it is now, it is a very limited language, but I hope to add many things to bring it up to modern standards ([see the 'Todo' section](#to_do)).
+As it is now, it is a very limited language, but I hope to add many things to bring it up to modern standards ([see the 'Todo' section](#to-do)).
 ```
 total: u64;
 total = call factorial 10;
@@ -41,7 +41,7 @@ Declerations are done with a single colon: `:`.
 ```
 names: types;
 ```
-The types are: `byte`, `u8`, `s8`, `u16`, `s16`, `u32`, `s32`, `u64`, `s64`, `f32`, `f64`, `ptr` and `word`.\
+The types are: `byte`, `u8`, `s8`, `u16`, `s16`, `u32`, `s32`, `u64`, `s64`, `f32`, `f64`, `ptr` and `word`. Pointers do not have a more specific type, and `word` is 8 bytes.\
 Names that have been declared like this become variables, meaning that they exist and are mutable at runtime.
 
 Assignments are done with `=`. Strictly speaking, there are three kinds of assignments: single assignment, multiple assignment and instruction expression.
@@ -70,14 +70,14 @@ Instructions are in polish notation (so first the instruction, then the values),
 names = instruction values;
 instruction values;
 ```
-All instructions are: `cast`, `read`, `write`, `addr`, `call`, `return`, `add`, `sub`, `mul`, `div`, `grows`, `shnks`, `equ`, `if`, `ifn` and `skip`.\
+All instructions are: `cast`, `trans`, `read`, `write`, `addr`, `call`, `return`, `add`, `sub`, `mul`, `div`, `grows`, `shnks`, `equ`, `if`, `ifn`, `skip` and `syscall`.\
 The [section 'Instructions'](#instructions) contains a table that goes over what each one needs and does.
 
 Lastly, there are two kinds of code blocks. Procedures, and basic blocks (or just 'blocks').
 A basic block is a set of statements surrounded by curly braces, as in this example:
 ```
 c: f32;
-c = 1e10;
+c = 1.1;
 name :: {
 	a, b: f32, f32;
 	a = call some_procedure;
@@ -119,8 +119,9 @@ As parameter declerations are decleration statements, they are seperated by semi
 
 ## To do
 * bugfixes and a lot of testing
-* syscalls
+* comments
 * `import`
+* `:=` or some variation of it
 * type, variable and instruction aliasing
 * more kinds of literals
 * custom types
@@ -132,6 +133,7 @@ As parameter declerations are decleration statements, they are seperated by semi
 | name   | produces              | takes                        | description |
 |--------|-----------------------|------------------------------|-------------|
 |`cast`  | any type              | any type                     | converts any type to any other type |
+|`trans` | any type              | any type                     | directly copies the bits from any type to any other type |
 |`read`  | any type              | a pointer                    | reads a type-sized piece of memory at a pointer's location |
 |`write` | nothing               | a pointer and a variable     | writes the value in the variable to the pointer's location |
 |`addr`  | a pointer             | a variable                   | gives the address of a variable |
@@ -147,6 +149,7 @@ As parameter declerations are decleration statements, they are seperated by semi
 |`if`    | nothing               | any number and a label       | jumps to the label if its first argument is not equal to zero; 'jump if true' |
 |`ifn`   | nothing               | any number and a label       | jumps to the label if its first argument is equal to zero; 'jump if not true' |
 |`skip`  | nothing               | a label                      | jumps to the end of the basic block that the label refers to |
+|`syscall`| any type             | anywhere from 1 to 6 arguments | preforms a linux syscall |
 
 ## Building and usage
 To build the compiler, first install odin, clone this repository, and then run:

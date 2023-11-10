@@ -41,6 +41,8 @@ Op_code :: enum i64 {ERR,
 	JUMP_IF, JUMP_IFN,
 	JUMP, DYN_JUMP,
 
+	SYSCALL_0, SYSCALL_1, SYSCALL_2, SYSCALL_3, SYSCALL_4, SYSCALL_5, SYSCALL_6,
+
 	DONE,
 }
 
@@ -61,6 +63,7 @@ Word :: struct #raw_union {
 	float_8B: f64,
 
 	ptr_8B: rawptr,
+	uptr_8B: uintptr,
 
 	one_byte: byte,
 	two_byte: [2]byte,
@@ -167,12 +170,12 @@ Base_type :: enum{ /* synchronize this with Keyword enum */
 
 Instruction :: enum{ /* synchronize this with Keyword enum */
 	I_UNKNOWN,
-	I_CAST, I_READ, I_WRITE, I_ADDR,
+	I_CAST, I_TRANS, I_READ, I_WRITE, I_ADDR,
 	I_CALL, I_RETURN,
 	I_ADD, I_SUB, I_MUL, I_DIV,
 	I_GROWS, I_SHNKS, I_EQU,
 	I_IF, I_IFN, I_SKIP,
-	I_LABEL
+	I_SYSCALL, I_LABEL
 }
 
 /* <tokenizing> */
@@ -183,21 +186,22 @@ Token :: struct{
 Poslen :: struct{
 	pos, len: int
 }
-Keyword :: enum { /* synchronize this with the keywords map */
+Keyword :: enum { /* synchronize this with the string arrays */
 	K_ERROR,
 	K_INSTRUCTIONS_START, /* synchronize this with Instruction enum */
-		K_CAST, K_READ, K_WRITE, K_ADDR,
+		K_CAST, K_TRANS, K_READ, K_WRITE, K_ADDR,
 		K_CALL, K_RETURN,
 		K_ADD, K_SUB, K_MUL, K_DIV,
 		K_GROWS, K_SHNKS, K_EQU,
 		K_IF, K_IFN, K_SKIP,
+		K_SYSCALL,
 	K_INSTRUCTIONS_END,
 
 	K_DEFINE, K_ARG_SEPERATOR,
 
 	K_OPERATORS_START,
 		K_COLON, K_EQUAL, K_PAREN_OPEN, K_PAREN_CLOSE, K_BRACE_OPEN, K_BRACE_CLOSE, K_HYPHEN,
-		K_BRACKET_OPEN, K_BRACKET_CLOSE, K_DOT, K_COMMA, K_SEMICOLON,
+		K_BRACKET_OPEN, K_BRACKET_CLOSE, K_COMMA, K_SEMICOLON,
 	K_OPERATORS_END,
 
 	K_TYPES_START, /* synchronize this with Base_type enum */
@@ -207,35 +211,52 @@ Keyword :: enum { /* synchronize this with the keywords map */
 
 	K_OTHER
 }
-/* TODO: make a string array with all the words and have them be synchronized automagically with a loop and the other enum */
-/* TODO: add a `transmute` instruction */
-keywords := map[string]Keyword { /* synchronize this with print_scope */
-	"cast" = .K_CAST, "read" = .K_READ, "write" = .K_WRITE, "addr" = .K_ADDR,
-	"call" = .K_CALL, "return" = .K_RETURN,
-	"add" = .K_ADD, "sub" = .K_SUB, "mul" = .K_MUL, "div" = .K_DIV,
-	"grows" = .K_GROWS, "shnks" = .K_SHNKS, "equ" = .K_EQU,
-	"if" = .K_IF, "ifn" = .K_IFN, "skip" = .K_SKIP,
-
-	"::" = .K_DEFINE, "--" = .K_ARG_SEPERATOR,
-
-	"byte" = .K_BYTE, "u8" = .K_U8, "s8" = .K_S8, "u16" = .K_U16, "s16" = .K_S16,
-	"u32" = .K_U32, "s32" = .K_S32, "u64" = .K_U64, "s64" = .K_S64,
-	"f32" = .K_F32, "f64" = .K_F64, "ptr" = .K_PTR, "word" = .K_WORD,
+instruction_strings := [?]string{
+	"cast", "trans", "read", "write", "addr",
+	"call", "return", "add",
+	"sub", "mul", "div",
+	"grows", "shnks", "equ",
+	"if", "ifn", "skip",
+	"syscall"
+}
+type_strings := [?]string{
+	"byte", "u8", "s8", "u16", "s16",
+	"u32", "s32", "u64", "s64",
+	"f32", "f64", "ptr", "word"
 }
 stoptokens :: []rune {
 	':', '=', '(', ')', '{', '}', '-',
-	'[', ']', '.',
+	'[', ']',
 	',', ';'
 }
+
+keywords: map[string]Keyword
+
 import "core:unicode/utf8"
-/* Adds the 'stoptokens' operators to the map */
 @(private) @(init) init_keywords :: proc() { 
-	k := Keyword.K_OPERATORS_START + Keyword(1)
+	k := Keyword.K_INSTRUCTIONS_START + Keyword(1)
+	for str in instruction_strings {
+		keywords[str] = k
+		k += Keyword(1)
+		assert(k <= .K_INSTRUCTIONS_END)
+	}
+
+	keywords["::"] = .K_DEFINE
+	keywords["--"] = .K_ARG_SEPERATOR
+
+	k = Keyword.K_OPERATORS_START + Keyword(1)
 	for tok in stoptokens {
 		s := utf8.runes_to_string({tok})
 		keywords[s] = k
 		k += Keyword(1)
 		assert(k <= .K_OPERATORS_END)
+	}
+
+	k = Keyword.K_TYPES_START + Keyword(1)
+	for str in type_strings {
+		keywords[str] = k
+		k += Keyword(1)
+		assert(k <= .K_TYPES_END)
 	}
 }
 whitespace :: []rune {

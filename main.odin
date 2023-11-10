@@ -96,19 +96,17 @@ print_error :: proc(message: string, error_poslen: Poslen, there_will_be_more :=
 print_scope :: proc(scope_name: Name, scope: ^Scope, depth: int) {
 	depth := depth
 	pf :: fmt.printf
-	type_strs := [?]string{"???", "byte", "u8", "s8", "u16", "s16", "u32", "s32", "u64", "s64", "f32", "f64", "ptr", "word"}
-	insr_strs := [?]string{"???", "cast", "read", "write", "addr", "call", "return", "add", "sub", "mul", "div", "grows", "shnks", "equ", "if", "ifn", "skip"}
 	if scope.kind == .PROC {
 		for i in 0..<depth - 2 do pf("\t")
 		pf("%v :: (", scope_name)
 		for name in scope.parameters_input {
 			decf := scope.decfineds[name]
-			pf("%v: %v; ", name, type_strs[decf.type])
+			pf("%v: %v; ", name, type_strings[decf.type - Type(1)])
 		}
 		if len(scope.parameters_output) > 0 do pf("-- ")
 		for name in scope.parameters_output {
 			decf := scope.decfineds[name]
-			pf("%v: %v; ", name, type_strs[decf.type])
+			pf("%v: %v; ", name, type_strings[decf.type - Type(1)])
 		}
 		pf(") {{\n")
 	} else if scope.kind == .BLOC {
@@ -119,7 +117,7 @@ print_scope :: proc(scope_name: Name, scope: ^Scope, depth: int) {
 		decf := scope.decfineds[name]
 		for i in 0..<depth do pf("\t")
 		if decf.is_variable {
-			pf("%v: %v;\n", name, type_strs[decf.type])
+			pf("%v: %v;\n", name, type_strings[decf.type - Type(1)])
 		}
 		else if scope, is_scope := decf.content.(^Scope); is_scope {
 			if scope.kind == .PROC do print_scope(name, scope, depth + 1)
@@ -138,7 +136,7 @@ print_scope :: proc(scope_name: Name, scope: ^Scope, depth: int) {
 		right_loop: for v, i in statement.right do switch q in v {
 			case Value: pf("%v ", q)
 			case Name: pf("%v ", q)
-			case Type: pf("%v ", type_strs[q])
+			case Type: pf("%v ", type_strings[q - Type(1)])
 			case Instruction:
 				if q == .I_LABEL {
 					namae := statement.right[1].(Name)
@@ -146,7 +144,7 @@ print_scope :: proc(scope_name: Name, scope: ^Scope, depth: int) {
 					print_scope(namae, scope.decfineds[namae].content.(^Scope), depth + 1)
 					do_semicolon = false
 					break right_loop
-				} else do pf("%v ", insr_strs[q])
+				} else do pf("%v ", instruction_strings[q - Instruction(1)])
 			case ^Scope: print_scope("", scope, depth + 1)
 			case: pf("INVALID TOKEN")
 		}

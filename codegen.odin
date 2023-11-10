@@ -156,6 +156,11 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			else if lt == .T_F64 && rt == .T_F32 do add_tac(&block, .CAST_F4_TO_F8, Word{i=0}, Word{i=1})
 			else if lt == .T_F32 && (rt == .T_F64 || rt == .T_F64) do add_tac(&block, .CAST_F8_TO_F4, Word{i=0}, Word{i=1})
 			add_MOV_R2M_tac(left.place, left.type, 0, &block)
+		case .I_TRANS: /* OPTIM: Turn vars of same size into single movs */
+			left := retrieve_var_place(statement.left[0], &var_places)
+			right_type := type_of_valthing(statement.right[1], scope)
+			add_MOV_2R_tac(0, right_type, statement.right[1], &block, &var_places, scope)
+			add_MOV_R2M_tac(left.place, left.type, 0, &block)
 		case .I_READ:
 			left := retrieve_var_place(statement.left[0], &var_places)
 			right := retrieve_var_place(statement.right[1].(Name), &var_places)
@@ -175,7 +180,7 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			tbc := to_be_called_decf.content.(^Scope)
 			smol_push := 2 + len(tbc.parameters_output) + len(tbc.parameters_input)
 			add_tac(&block, .PUSH, Word{i = smol_push})
-			offset_to_input_params := stack_offsets.frame_size + 8*(2 + len(tbc.parameters_input))
+			offset_to_input_params := stack_offsets.frame_size + 8*(2 + len(tbc.parameters_output))
 			for it in 2..<len(statement.right) {
 				right_type := type_of_valthing(statement.right[it], scope)
 				add_MOV_2M_tac(offset_to_input_params + 8*(it - 2), right_type, statement.right[it], &block, &var_places, scope)
@@ -286,6 +291,27 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			append(&block.program, ..bloc_for_insert.program[:])
 			append(&block.labels_still_unresolved, ..bloc_for_insert.labels_still_unresolved[:])
 			append(&block.labels_to_be_offset, ..bloc_for_insert.labels_to_be_offset[:])
+		case .I_SYSCALL:
+			right_type := type_of_valthing(statement.right[1], scope)
+			add_MOV_2R_tac(1, right_type, statement.right[1], &block, &var_places, scope)
+
+			arity := len(statement.right)
+			if arity > 2 {
+				add_tac(&block, .PUSH, Word{i = arity - 2})
+				add_tac(&block, .MOV_I2R, Word{i = 2}, Word{sint_8B = i64(stack_offsets.frame_size)})
+				offset_to_args := stack_offsets.frame_size
+				for j in 2..<arity {
+					right_type := type_of_valthing(statement.right[j], scope)
+					add_MOV_2M_tac(offset_to_args + 8*(j - 2), right_type, statement.right[j], &block, &var_places, scope)
+				}
+			}
+			add_tac(&block, .SYSCALL_0 + Op_code(arity - 2), Word{i = 0}, Word{i = 1}, Word{i = 2})
+			if arity > 2 {
+				add_tac(&block, .POP, Word{i = arity - 2})
+			}
+			left := retrieve_var_place(statement.left[0], &var_places)
+			add_MOV_R2M_tac(left.place, left.type, 0, &block)
+			
 		} /* closes instruction switch statement */
 		case ^Scope: panic("No idea how to deal with scope in a codegen statement")
 		} /* closes switch statement that goes over the first thing in a statement */
@@ -435,7 +461,6 @@ add_MOV_2M_tac :: proc(left: int, left_type: Type, right: Valthing, block: ^Bloc
 			right_word = Word{i = right_var.place}
 		} else {
 			op_code = Op_code.MOV_1B_I2M + log2[size_of_type[left_type]]
-			println(left_type)
 			if left_type == .T_F32 {
 				right_word = Word{float_4B = f32(decf.content.(Value).(f64))}
 			} else if left_type == .T_F64 || left_type == .T_FLOAT {
