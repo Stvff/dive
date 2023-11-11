@@ -507,7 +507,7 @@ collect_variables :: proc(scope: ^Scope, amounts: ^Var_ams, do_recurse: bool) {
 
 print_program :: proc(block: Block) {
 	for tac, i in block.program {
-		printf("0x%x, 0d%v | %v 0x%x 0x%x 0x%x\n", i, i, tac.op_code, tac.args[0].i, tac.args[1].i, tac.args[2].i)
+		printf("0x%x | %v 0x%x 0x%x 0x%x\n", i, tac.op_code, tac.args[0].i, tac.args[1].i, tac.args[2].i)
 	}
 }
 

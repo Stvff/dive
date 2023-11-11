@@ -22,40 +22,87 @@ Comments to use in situations:
 	This helps seeing where code is commented out, for cleanup purposes.
 */
 
+print_help :: proc() {
+	printf(
+`dive: A somewhat properly typed and procedural programming language.
+	usage: dive <arguments> path/to/entry/file.dive
+	arguments:
+		-check
+		-debug-tokens
+		-debug-parse
+		-debug-gen
+		-debug-run
+		-help
+
+For questions or bugs, go to https://www.github.com/StevenClifford/dive or email steve2020dev@gmail.com.
+`)
+}
+
 main :: proc(){
 	prog_name: string
-	if len(os.args) > 1 {
-		prog_name = os.args[1]
-	} else {
-		println("dive: got no file as input")
+	if len(os.args) == 1 {
+		println("dive: did not get any arguments.")
+		print_help()
 		return
 	}
+
+	debug_tokens, debug_parse, debug_gen, debug_run: bool
+	only_check: bool
+	for i in 1..<len(os.args) {
+		if os.args[i][0] == '-' {
+			switch os.args[i][1:] {
+			case "debug-tokens": debug_tokens = true
+			case "debug-parse": debug_parse = true
+			case "debug-gen": debug_gen = true
+			case "debug-run": debug_run = true
+			case "check": only_check = true
+			case "help": print_help()
+			case:
+				printf("dive: `%v` is not a recognized argument.\n", os.args[i])
+				print_help()
+			}
+			continue
+		}
+		prog_name = os.args[i]
+	}
+
 	prograwdata, file_success :=  os.read_entire_file(prog_name)
 	defer delete(prograwdata)
 	if !file_success {
-		println("dive: invalid file as input")
+		println("dive: invalid file as input.")
 		return
 	}
 	program_string := cast(string)prograwdata
-//	fmt.println(program_string)
 
 	context.user_ptr = &program_string
 
 	tokens := tokenize(program_string)
-//	for tok in tokens do println(tok)
+	if debug_tokens {
+		println("---------------------------------------------------------------------------")
+		for tok in tokens do println(tok)
+		println("---------------------------------------------------------------------------")
+	}
 	defer delete(tokens)
 
 	scope, ltok, parse_err := parse_scope(tokens[:], .GLOB)
 	if parse_err do return
 	if check(scope) do return
 
-	print_scope("", scope, 0)
-	println("---------------------------------------------------------------------------")
+	if debug_parse {
+		println("---------------------------------------------------------------------------")
+		print_scope("", scope, 0)
+		println("---------------------------------------------------------------------------")
+	}
 
 	block := generate_bytecode(scope, nil, nil)
-	print_program(block)
-	println("---------------------------------------------------------------------------")
-	run(block.program[:])
+	if debug_gen {
+		println("---------------------------------------------------------------------------")
+		print_program(block)
+		println("---------------------------------------------------------------------------")
+	}
+
+	if only_check do return
+	run(block.program[:], debug_run)
 }
 
 /* IDEA: Write to some buffer instead of stderr immediately, so that people can

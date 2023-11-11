@@ -4,15 +4,19 @@ import "core:intrinsics"
 
 /* TODO: make all instructions that rely on registers implicitly do that explicitly.
          examples are: add, sub, mul, div, if, ifn */
-run :: proc(program: []Tac) #no_bounds_check {
+run :: proc(program: []Tac, debug: bool) #no_bounds_check {
 	NIL :: Word{}
 	stack_allocated: int
 	ip, sp: int
 	regs: [REGISTER_AMOUNT]Word
 	stack: [STACK_SIZE]Word
-	defer for i in 0..<stack_allocated{
-		word := stack[i]
-		printf("0x%x: 0x%x, 0d%v, f%v, f%v\n", i*8, word.i, word.i, word.float_4B, word.float_8B)
+	defer if debug {
+		println("---------------------------------------------------------------------------")
+		for i in 0..<stack_allocated{
+			word := stack[i]
+			printf("0x%x: 0x%x, 0d%v, f%v, f%v\n", i*8, word.i, word.i, word.float_4B, word.float_8B)
+		}
+		println("---------------------------------------------------------------------------")
 	}
 
 	main_loop: for {
@@ -21,8 +25,10 @@ run :: proc(program: []Tac) #no_bounds_check {
 		a0 := program[ip].args[0]
 		a1 := program[ip].args[1]
 		a2 := program[ip].args[2]
-//		printf("ip: 0x%x, sp: 0x%x, stack_allocated: 0x%x\n", ip, 8*sp, 8*stack_allocated)
-//		print_tac(program[ip])
+		if debug {
+			printf("ip: 0x%x, sp: 0x%x, stack_allocated: 0x%x\n", ip, 8*sp, 8*stack_allocated)
+			print_tac(program[ip])
+		}
 	switch op_code {
 	case .ERR:
 		panic("error instruction")

@@ -17,8 +17,6 @@ echo :: {
 		is_endline = equ letter, 10;
 		ifn is_endline, loop;
 	}
-	letter = 10;
-	res, err = call write_file Stdout, data, 1;
 }
 
 read_file :: (file_descriptor: s32; data: ptr; length_in_bytes: s64 -- result: s64; errno: s32) {
