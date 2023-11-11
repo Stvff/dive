@@ -42,6 +42,7 @@ main :: proc(){
 	context.user_ptr = &program_string
 
 	tokens := tokenize(program_string)
+//	for tok in tokens do println(tok)
 	defer delete(tokens)
 
 	scope, ltok, parse_err := parse_scope(tokens[:], .GLOB)

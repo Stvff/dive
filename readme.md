@@ -117,9 +117,10 @@ doesnt :: (a: s64; b: s64) {
 ```
 As parameter declerations are decleration statements, they are seperated by semicolons.
 
+Everything between angle brackets (`<` and `>`) is a comment, and comments can nest.
+
 ## To do
 * bugfixes and a lot of testing
-* comments
 * `import`
 * `:=` or some variation of it
 * type, variable and instruction aliasing
@@ -127,6 +128,7 @@ As parameter declerations are decleration statements, they are seperated by semi
 * custom types
 * nested expressions
 * transpiling to assembly
+* some way to interact with Windows
 
 ## Instructions
 

@@ -8,13 +8,14 @@ echo :: {
 	res, err: s64, s32;
 	data = addr letter;
 
+	< This loop prints whatever is typed in, and then stops >
 	loop :: {
 		res, err = call read_file Stdin, data, 1;
 		res, err = call write_file Stdout, data, 1;
 
-		is_question_mark: u8;
-		is_question_mark = equ letter, 63;
-		ifn is_question_mark, loop;
+		is_endline: u8;
+		is_endline = equ letter, 10;
+		ifn is_endline, loop;
 	}
 	letter = 10;
 	res, err = call write_file Stdout, data, 1;

@@ -291,11 +291,20 @@ tokenize :: proc(program_string: string) -> [dynamic]Token {
 
 	tokens: [dynamic]Token
 	prev_token: Token
+	comment_nesting: int
 	for i := 0; i < len(nibbits); i += 1 {
 		nib := nibbits[i]
 		keyword, is_keyword := keywords[nib.str]
 		token := Token{poslen = {nib.pos, len(nib.str)}}
 		if is_keyword {
+			if keyword == .K_ANGLE_OPEN {
+				comment_nesting += 1
+				continue
+			}
+			if keyword == .K_ANGLE_CLOSE {
+				comment_nesting -= 1
+				continue
+			}
 			if keyword == .K_COLON && prev_token.t == .K_COLON {
 				tokens[len(tokens)-1] = {
 					{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos},
@@ -337,8 +346,10 @@ tokenize :: proc(program_string: string) -> [dynamic]Token {
 		} else {
 			token.t = nib.str
 		}
-		prev_token = {token.poslen, keyword} if is_keyword else {}
-		append(&tokens, token)
+		if comment_nesting == 0 {
+			prev_token = {token.poslen, keyword} if is_keyword else {}
+			append(&tokens, token)
+		}
 	}
 	return tokens
 }

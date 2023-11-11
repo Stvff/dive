@@ -201,7 +201,8 @@ Keyword :: enum { /* synchronize this with the string arrays */
 
 	K_OPERATORS_START,
 		K_COLON, K_EQUAL, K_PAREN_OPEN, K_PAREN_CLOSE, K_BRACE_OPEN, K_BRACE_CLOSE, K_HYPHEN,
-		K_BRACKET_OPEN, K_BRACKET_CLOSE, K_COMMA, K_SEMICOLON,
+		K_BRACKET_OPEN, K_BRACKET_CLOSE, K_ANGLE_OPEN, K_ANGLE_CLOSE,
+		K_COMMA, K_SEMICOLON,
 	K_OPERATORS_END,
 
 	K_TYPES_START, /* synchronize this with Base_type enum */
@@ -226,7 +227,7 @@ type_strings := [?]string{
 }
 stoptokens :: []rune {
 	':', '=', '(', ')', '{', '}', '-',
-	'[', ']',
+	'[', ']', '<', '>',
 	',', ';'
 }
 
