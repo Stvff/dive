@@ -28,7 +28,7 @@ factorial :: (n: u64 -- m: u64) {
 
 ## Syntax and some semantics
 All statements (except scope definitions) end with a semicolon. Comma's are whitespace and therefore optional.\
-There are four types of statements: Definitions, declerations, assignments and bare expressions.
+There are four types of statements: Definitions, declarations, assignments and bare expressions.
 
 Definitions are done with a double colon `::`.
 ```
@@ -37,7 +37,7 @@ names :: literals;
 `literals` can be integer or float literals, or a procedure or code block. Procedures and blocks are discussed later on.
 Names that have been defined with this become constants, and are compiletime values.
 
-Declerations are done with a single colon: `:`.
+Declarations are done with a single colon: `:`.
 ```
 names: types;
 ```
@@ -92,7 +92,7 @@ it continues with the instructions that are defined after the block, and not the
 Procedures are code blocks that take and return arguments, and make their own stack frame.
 They are defined as follows:
 ```
-name :: (input_declerations -- output_declerations) {
+name :: (input_declarations -- output_declarations) {
 	statements;
 }
 ```
@@ -115,20 +115,29 @@ doesnt :: (a: s64; b: s64) {
 	a = mul a b;
 }
 ```
-As parameter declerations are decleration statements, they are seperated by semicolons.
+As parameter declarations are declaration statements, they are seperated by semicolons.
 
 Everything between angle brackets (`<` and `>`) is a comment, and comments can nest.
 
+### Importing
+Other files can be imported with the keyword `import`, followed by the path, and terminated by a semicolon.
+```
+import path/to/other/file.dive;
+```
+This will copy all the declarations and definitions in that file over to the current scope, with the exception of bare blocks and code at the global scope of the imported file.
+Filepaths are relative to the file that the import is done in.
+Currently, circular imports _will_ form a recursion loop, so be aware!
+
 ## To do
 * bugfixes and a lot of testing
-* `import`
-* `:=` or some variation of it
-* type, variable and instruction aliasing
 * more kinds of literals
+* prefixes for `import`
+* type, variable and instruction aliasing
+* `:=` or some variation of it
 * custom types
 * nested expressions
 * transpiling to assembly
-* some way to interact with Windows
+* some way to interact with MS Windows
 
 ## Instructions
 

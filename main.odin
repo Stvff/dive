@@ -38,15 +38,16 @@ For questions or bugs, go to https://www.github.com/StevenClifford/dive or email
 `)
 }
 
+debug_tokens, debug_parse, debug_gen, debug_run: bool
+
 main :: proc(){
-	prog_name: string
+	program_name: string
 	if len(os.args) == 1 {
 		println("dive: did not get any arguments.")
 		print_help()
 		return
 	}
 
-	debug_tokens, debug_parse, debug_gen, debug_run: bool
 	only_check: bool
 	for i in 1..<len(os.args) {
 		if os.args[i][0] == '-' {
@@ -63,20 +64,38 @@ main :: proc(){
 			}
 			continue
 		}
-		prog_name = os.args[i]
+		program_name = os.args[i]
 	}
 
-	prograwdata, file_success :=  os.read_entire_file(prog_name)
-	defer delete(prograwdata)
+	scope, err := parse_and_check(program_name)
+	if err do return
+
+	block := generate_bytecode(scope, nil, nil)
+	if debug_gen {
+		println("---------------------------------------------------------------------------")
+		print_program(block)
+		println("---------------------------------------------------------------------------")
+	}
+	if only_check do return
+
+	run(block.program[:], debug_run)
+}
+
+parse_and_check :: proc(program_name: string) -> (^Scope, bool) {
+	prograwdata, file_success := os.read_entire_file(program_name)
 	if !file_success {
-		println("dive: invalid file as input.")
-		return
+		printf("dive: invalid file `%v` as input.\n", program_name)
+		return nil, true
 	}
 	program_string := cast(string)prograwdata
 
-	context.user_ptr = &program_string
+	entry_program_info := new(Program_string_info)
+	entry_program_info ^= Program_string_info {
+		program_name,
+		program_string
+	}
 
-	tokens := tokenize(program_string)
+	tokens := tokenize(entry_program_info)
 	if debug_tokens {
 		println("---------------------------------------------------------------------------")
 		for tok in tokens do println(tok)
@@ -85,8 +104,7 @@ main :: proc(){
 	defer delete(tokens)
 
 	scope, ltok, parse_err := parse_scope(tokens[:], .GLOB)
-	if parse_err do return
-	if check(scope) do return
+	if parse_err do return scope, parse_err
 
 	if debug_parse {
 		println("---------------------------------------------------------------------------")
@@ -94,25 +112,21 @@ main :: proc(){
 		println("---------------------------------------------------------------------------")
 	}
 
-	block := generate_bytecode(scope, nil, nil)
-	if debug_gen {
-		println("---------------------------------------------------------------------------")
-		print_program(block)
-		println("---------------------------------------------------------------------------")
-	}
+	if check(scope) do return scope, true
 
-	if only_check do return
-	run(block.program[:], debug_run)
+	return scope, false
 }
+
 
 /* IDEA: Write to some buffer instead of stderr immediately, so that people can
    limit the amount of errors that gets thrown at their face. */
 print_error :: proc(message: string, error_poslen: Poslen, there_will_be_more := false) {
-	program_string := (cast(^string) context.user_ptr)^
+	program_string := error_poslen.info.body
+	program_name := error_poslen.info.name
 	error_pos := error_poslen.pos
 	error_len := error_poslen.len
 
-	fmt.eprintf("%v\n", message)
+	fmt.eprintf("in file `%v`: %v\n", program_name, message)
 	line_nr, line_pos := 1, 0
 	for i in 0..<error_pos {
 		c := program_string[i]
@@ -159,7 +173,7 @@ print_scope :: proc(scope_name: Name, scope: ^Scope, depth: int) {
 		pf(") {{\n")
 	} else if scope.kind == .BLOC {
 		for i in 0..<depth - 2 do pf("\t")
-		pf("%v :: {{\n", scope_name)	
+		pf("%v :: {{\n", scope_name)
 	}
 	for name in scope.names_inbody {
 		decf := scope.decfineds[name]

@@ -5,7 +5,10 @@ package dive
    but there might be side effects and crossreference checking that I
    haven't thought of yet. I should write a big program where I do it
    by hand before I decide for sure. */
+/* SPEED: add an `already checked` boolean to `Scope` to prevent us
+   from checking an n-depth import n times */
 check :: proc(scope: ^Scope) -> bool {
+	if scope.already_checked do return false
 	final_err := false
 	for name, thing in scope.decfineds {
 		if thing.type == .T_PROC || thing.type == .T_BLOC {
@@ -35,6 +38,7 @@ check :: proc(scope: ^Scope) -> bool {
 			if check_expression(scope, left_types[:], statement.right[:], left_poslens, right_poslens) do err = true
 		}
 	}
+	scope.already_checked = true
 	return final_err
 }
 
@@ -72,7 +76,7 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					continue main_loop
 				}
 				t := desired[0]
-				if (.T_BYTE <= t && t <= .T_S64) || t == .T_INT {
+				if (.T_BYTE <= t && t <= .T_S64) || t == .T_INT || t == .T_PTR {
 					_, is_int := q.(int)
 					if !is_int {
 						print_error("Integer literal was expected, but not given.", left_poslens[0], true)
@@ -104,8 +108,8 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					continue main_loop
 				}
 				t := desired[0]
-				if (.T_BYTE <= decf.type && decf.type <= .T_S64) || decf.type == .T_INT {
-					if !(.T_BYTE <= t && t <= .T_S64) && t != .T_INT {
+				if (.T_BYTE <= decf.type && decf.type <= .T_S64) || decf.type == .T_INT || decf.type == .T_PTR {
+					if !(.T_BYTE <= t && t <= .T_S64) && t != .T_INT && t != .T_PTR {
 						print_error("Floating point value was expected, but not given.", left_poslens[0], true)
 						print_error("This constant does not contain a floating point value:", right_poslens[0])
 						err = true
@@ -119,7 +123,7 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 				} else if desired[0] != decf.type {
 					print_error("Mismatched types.\nExpectation was set by:", left_poslens[0], true)
 					print_error("and not fulfilled by:", right_poslens[0], true)
-					print_error("which was defined here:", {decf.dpos, len(q)})
+					print_error("which was defined here:", {decf.dpos, len(q), decf.infile})
 					err = true
 				}
 			case Type:
@@ -246,7 +250,7 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					to_be_called := decf.content.(^Scope)
 					if len(expression) != 2 + len(to_be_called.parameters_input) || len(desired) != len(to_be_called.parameters_output) {
 						print_error("`call` takes and produces the same amount of values as the procedure it calls, but was not given that.", right_poslens[1], true)
-						print_error("Procedure was defined here:", {decf.dpos, len(proc_name)})
+						print_error("Procedure was defined here:", {decf.dpos, len(proc_name), decf.infile})
 						err = true
 						continue main_loop
 					}
@@ -254,7 +258,7 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 						var_decf := to_be_called.decfineds[n]
 						if desired[i] != var_decf.type {
 							print_error("This variable is not the same type as the one expected by the procedure being called:", left_poslens[1], true)
-							print_error("Expected type was defined here:", {var_decf.dpos, len(n)})
+							print_error("Expected type was defined here:", {var_decf.dpos, len(n), var_decf.infile})
 							err = true
 							continue main_loop
 						}
@@ -266,7 +270,7 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					for n, i in to_be_called.parameters_input {
 						var_decf := to_be_called.decfineds[n]
 						append(&procedure_input_types, var_decf.type)
-						append(&procedure_input_poslens, Poslen{var_decf.dpos, len(n)})
+						append(&procedure_input_poslens, Poslen{var_decf.dpos, len(n), var_decf.infile})
 					}
 					if check_expression(scope, procedure_input_types[:], expression[2:], procedure_input_poslens[:], right_poslens[2:]) {
 						err = true
@@ -337,9 +341,6 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					}
 					expression = expression[1:]
 					right_poslens = right_poslens[1:]
-				case .I_LABEL:
-					expression = expression[1:]
-					right_poslens = right_poslens[1:]
 				case .I_SYSCALL:
 					if len(expression) < 2 || len(expression) > 8 || len(desired) != 1 {
 						print_error("`syscall` takes anywhere from 1 to 6 arguments, and produces 1 value.", right_poslens[0])
@@ -349,6 +350,9 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					l := len(expression) - 1
 					expression = expression[l:]
 					right_poslens = right_poslens[l:]
+				case .I_LABEL:
+					expression = expression[1:]
+					right_poslens = right_poslens[1:]
 				}
 			case ^Scope:
 				print_error("Scope in expressions are not yet implemented.", right_poslens[0])
@@ -366,7 +370,8 @@ type_of_valthing :: proc(val: Valthing, scope: ^Scope) -> Type {
 	switch q in val {
 	case Value: switch v in q {
 		case int: return .T_INT
-		case f64: return .T_FLOAT;}
+		case f64: return .T_FLOAT
+		case string: return .T_UNKNOWN;}
 	case Name:
 		decf, exists := visible_decfined(scope, q)
 		if !exists do return .T_UNKNOWN

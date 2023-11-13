@@ -311,7 +311,6 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			}
 			left := retrieve_var_place(statement.left[0], &var_places)
 			add_MOV_R2M_tac(left.place, left.type, 0, &block)
-			
 		} /* closes instruction switch statement */
 		case ^Scope: panic("No idea how to deal with scope in a codegen statement")
 		} /* closes switch statement that goes over the first thing in a statement */

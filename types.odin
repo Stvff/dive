@@ -116,6 +116,7 @@ Program_place :: struct {
 Scope_kind :: enum{GLOB, PROC, BLOC}
 Scope :: struct{
 	kind: Scope_kind,
+	already_checked: bool,
 	scope_above: ^Scope `fmt:"-"`, /* this random string is for telling fmt.print* to ignore this */
 	parameters_input: [dynamic]Name,
 	parameters_output: [dynamic]Name,
@@ -126,12 +127,13 @@ Scope :: struct{
 
 Decfined :: struct{
 	dpos: int,
+	infile: ^Program_string_info,
 	type: Type,
 	is_variable: bool,
 	content: Valthing
 }
 
-Statement_kind :: enum{ASSI, DECL, DEFI, BARE}
+Statement_kind :: enum{ASSI, DECL, DEFI, BARE, IMPO}
 Statement :: struct{
 	kind: Statement_kind,
 	left: [dynamic]Name,
@@ -149,7 +151,7 @@ Name :: distinct string
 Type :: Base_type
 
 Value :: union{
-	int, f64
+	int, f64, string
 }
 
 log2 := [?]Op_code{nil, /*1*/ Op_code(0), /*2*/ Op_code(1), nil, /*4*/ Op_code(2), nil, nil, nil, /*8*/ Op_code(3)}
@@ -175,7 +177,8 @@ Instruction :: enum{ /* synchronize this with Keyword enum */
 	I_ADD, I_SUB, I_MUL, I_DIV,
 	I_GROWS, I_SHNKS, I_EQU,
 	I_IF, I_IFN, I_SKIP,
-	I_SYSCALL, I_LABEL
+	I_SYSCALL,
+	I_LABEL,
 }
 
 /* <tokenizing> */
@@ -184,8 +187,14 @@ Token :: struct{
 	t: union{ Keyword, int, f64, string }
 }
 Poslen :: struct{
-	pos, len: int
+	pos, len: int,
+	info: ^Program_string_info
 }
+Program_string_info :: struct{
+	name: string,
+	body: string `fmt:"-"`, /* this random string is for telling fmt.print* to ignore this */
+}
+
 Keyword :: enum { /* synchronize this with the string arrays */
 	K_ERROR,
 	K_INSTRUCTIONS_START, /* synchronize this with Instruction enum */
@@ -197,7 +206,7 @@ Keyword :: enum { /* synchronize this with the string arrays */
 		K_SYSCALL,
 	K_INSTRUCTIONS_END,
 
-	K_DEFINE, K_ARG_SEPERATOR,
+	K_DEFINE, K_ARG_SEPERATOR, K_IMPORT,
 
 	K_OPERATORS_START,
 		K_COLON, K_EQUAL, K_PAREN_OPEN, K_PAREN_CLOSE, K_BRACE_OPEN, K_BRACE_CLOSE, K_HYPHEN,
@@ -244,6 +253,7 @@ import "core:unicode/utf8"
 
 	keywords["::"] = .K_DEFINE
 	keywords["--"] = .K_ARG_SEPERATOR
+	keywords["import"] = .K_IMPORT
 
 	k = Keyword.K_OPERATORS_START + Keyword(1)
 	for tok in stoptokens {
