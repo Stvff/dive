@@ -176,6 +176,20 @@ run :: proc(program: []Tac, debug: bool) #no_bounds_check {
 		regs[0].float_4B = regs[1].float_4B / regs[2].float_4B
 	case .DIV_F64:
 		regs[0].float_8B = regs[1].float_8B / regs[2].float_8B
+	/* mod */
+	case .MOD_UINT:
+		regs[0].uint_8B = regs[1].uint_8B %% regs[2].uint_8B
+	case .MOD_SINT:
+		regs[0].sint_8B = regs[1].sint_8B %% regs[2].sint_8B
+
+	case .AND:
+		regs[a0.i].uint_8B = regs[a1.i].uint_8B & regs[a2.i].uint_8B
+	case .OR:
+		regs[a0.i].uint_8B = regs[a1.i].uint_8B | regs[a2.i].uint_8B
+	case .XOR:
+		regs[a0.i].uint_8B = regs[a1.i].uint_8B ~ regs[a2.i].uint_8B
+	case .NOT:
+		regs[a0.i].uint_8B = ~regs[a1.i].uint_8B
 
 /* comparisons */
 	case .GROWS_UINT:
@@ -267,6 +281,13 @@ run :: proc(program: []Tac, debug: bool) #no_bounds_check {
 		sys_arg6 := stack[base + 5].uptr_8B
 		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1, sys_arg2, sys_arg3, sys_arg4, sys_arg5, sys_arg6)
 
+	case .DEBUG:
+		println("---------------------------------------------------------------------------")
+		for i in sp..<stack_allocated{
+			word := stack[i]
+			printf("0x%x: 0x%x, 0d%v, f%v, f%v\n", i*8, word.i, word.i, word.float_4B, word.float_8B)
+		}
+		println("---------------------------------------------------------------------------")
 	case .DONE:
 		break main_loop
 	}}

@@ -1,0 +1,73 @@
+print_demo :: {
+	n: s64;
+	call println_u64 0;
+	call println 1;
+	call println_u64 42;
+	call println 1;
+	call println_u64 -1;
+}
+
+import mem.dive;
+import io.dive;
+
+ASCII_NEWLINE :: 10;
+ASCII_ZERO :: 48;
+ASCII_A_LOWER :: 97;
+ASCII_U_UPPER :: 65;
+
+println_u64 :: (integer: u64) {
+	amount_written: s64;
+	bufsize: ptr; bufsize = 64;
+
+	buffer, err: ptr, s32;
+	buffer, err = call alloc bufsize;
+	if err, exit;
+
+	character, index: byte, ptr;
+
+	suffix_newline :: {
+		character = ASCII_NEWLINE;
+		index = add buffer, bufsize;
+		index = sub index, 1;
+		write index, character;
+	}
+
+	loop :: {
+		remainder, digit: u64, byte;
+
+		remainder = mod integer, 10;
+		digit = cast remainder;
+		character = ASCII_ZERO;
+		character = add character, digit;
+
+		integer = div integer, 10;
+
+		index = sub index, 1;
+		write index, character;
+		if integer, loop;
+	}
+
+	write_to_stdout :: {
+		bufsize = sub index, buffer;
+		amount_written, err = call write_file Stdout, index, bufsize;
+		if err, exit;
+	}
+
+	exit :: {
+		buffer, err = call free buffer;
+		return;
+	}
+}
+
+println :: (amount: u32) {
+	newline: byte; newline = ASCII_NEWLINE;
+	buffer: ptr; buffer = addr newline;
+	if amount, write_loop;
+	return;
+	write_loop :: {
+		a, e: s64, s32;
+		a, e = call write_file, Stdout, buffer, 1;
+		amount = sub amount 1;
+		if amount, write_loop;
+	}
+}

@@ -1,28 +1,48 @@
-map_no_file   :: -1;
-map_prot_READ      :: 0;
-map_prot_WRITE     :: 1;
-map_prot_EXEC      :: 2;
-map_prot_SEM       :: 3;
-map_prot_GROWSDOWN :: 24;
-map_prot_GROWSUP   :: 25;
+< This memory maps the appropriately sized region >
+alloc :: (size: s64 -- memp: ptr; errno: s32) {
+	usize: u64;
+	usize = cast size;
+	usize = add usize, 8;
+	< I must add rounding up to page size here >
+	
+	prots, flags: s32, s32;
+	prots = or map_prot_WRITE map_prot_READ;
+	flags = or map_flag_ANONYMOUS map_flag_PRIVATE;
 
-map_flag_SHARED          :: 0;
-map_flag_PRIVATE         :: 1;
-map_flag_SHARED_VALIDATE :: 2;
-map_flag_FIXED           :: 4;
-map_flag_ANONYMOUS       :: 5;
-map_flag_GROWSDOWN       :: 8;
-map_flag_DENYWRITE       :: 11;
-map_flag_EXECUTABLE      :: 12;
-map_flag_LOCKED          :: 13;
-map_flag_NORESERVE       :: 14;
-map_flag_POPULATE        :: 15;
-map_flag_NONBLOCK        :: 16;
-map_flag_STACK           :: 17;
-map_flag_HUGETLB         :: 18;
-map_flag_SYNC            :: 19;
-map_flag_FIXED_NOREPLACE :: 20;
-map_flag_UNINITIALIZED   :: 26;
+	memp, errno = call mmap 0, usize, prots, flags, map_no_file, 0;
+	< The size of the region is secretly saved right in front of the region given to the user >
+	if errno, exit;
+	usize = sub usize, 8;
+	write memp, usize;
+	memp = add memp, 8;
+	exit :: {return;}
+}
+
+< Frees a thing allocated with `alloc` >
+free :: (memp: ptr -- zeroed_ptr: ptr; errno: s32) {
+	ifn memp, exit;
+
+	base_memp, usize: ptr, u64;
+	base_memp = sub memp, 8;
+	usize = read base_memp;
+	usize = add usize, 8;
+	errno = call munmap base_memp, usize;
+
+	exit :: {return;}
+}
+
+map_no_file   :: -1;
+
+map_prot_READ      :: 1;
+map_prot_WRITE     :: 2;
+map_prot_EXEC      :: 4;
+map_prot_SEM       :: 8;
+
+map_flag_SHARED          :: 1;
+map_flag_PRIVATE         :: 2;
+map_flag_SHARED_VALIDATE :: 4;
+map_flag_FIXED           :: 16;
+map_flag_ANONYMOUS       :: 32;
 
 mmap :: (address: ptr; size: u64; protection_flags: s32; flags: s32; file_descriptor: s32; offset: s32 -- mapped_address: ptr; errno: s32) {
 	SYS_mmap :: 9;
@@ -30,12 +50,11 @@ mmap :: (address: ptr; size: u64; protection_flags: s32; flags: s32; file_descri
 
 	mapped_address = syscall SYS_mmap address, size, protection_flags, flags, file_descriptor, offset;
 	errno = trans mapped_address;
-	is_ok = grows -1 errno;
+	is_ok = grows -1, errno;
 	if is_ok, exit_norminally;
 
 	exit_with_error :: {
-		zeroed_ptr: ptr;
-		mapped_address = zeroed_ptr;
+		mapped_address = 0;
 		errno = mul -1, errno;
 		return;
 	}

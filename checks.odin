@@ -287,7 +287,7 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 						err = true
 					}
 				/* TODO: limit add, sub, compares, ifs, to the relevent types */
-				case .I_ADD, .I_SUB, .I_MUL, .I_DIV:
+				case .I_ADD, .I_SUB, .I_MUL, .I_DIV, .I_MOD:
 					if len(expression) != 3 || len(desired) != 1 {
 						print_error("Arithmetic instructions take 2 values and produce 1 value.", right_poslens[0])
 						err = true
@@ -298,8 +298,34 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 						err = true
 						continue main_loop
 					}
+					if t := desired[0]; q == .I_MOD && (t == .T_FLOAT || t == .T_F32 || t == .T_F64) {
+						print_error("`mod` does not do floats, if you see this error, tell the author to implement it.", right_poslens[0])
+						err = true
+						continue main_loop
+					}
 					expression = expression[2:]
 					right_poslens = right_poslens[2:]
+				case .I_AND, .I_OR, .I_XOR:
+					if len(expression) != 3 || len(desired) != 1 {
+						print_error("`and`, `or` and `xor` take 2 values and produce 1 value.", right_poslens[0])
+						err = true
+						continue main_loop
+					}
+					if size_of_type[type_of_valthing(expression[1], scope)] != size_of_type[type_of_valthing(expression[2], scope)] {
+						print_error("`and`, `or` and `xor` take 2 values of the same size, but the given values are sized differently.", right_poslens[0])
+						err = true
+						continue main_loop
+					}
+					expression = expression[2:]
+					right_poslens = right_poslens[2:]
+				case  .I_NOT:
+					if len(expression) != 2 || len(desired) != 1 {
+						print_error("`not` takes 1 value and produces 1 value.", right_poslens[0])
+						err = true
+						continue main_loop
+					}
+					expression = expression[1:]
+					right_poslens = right_poslens[1:]
 				case .I_GROWS, .I_SHNKS, .I_EQU:
 					if len(expression) != 3 || len(desired) != 1 {
 						print_error("Comparison instructions take 2 values and produce 1 value.", right_poslens[0])
@@ -351,6 +377,9 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					expression = expression[l:]
 					right_poslens = right_poslens[l:]
 				case .I_LABEL:
+					expression = expression[1:]
+					right_poslens = right_poslens[1:]
+				case .I_DEBUG:
 					expression = expression[1:]
 					right_poslens = right_poslens[1:]
 				}

@@ -38,7 +38,7 @@ For questions or bugs, go to https://www.github.com/StevenClifford/dive or email
 `)
 }
 
-debug_tokens, debug_parse, debug_gen, debug_run: bool
+debug_tokens, debug_parse, debug_gen, debug_tac, debug_run: bool
 
 main :: proc(){
 	program_name: string
@@ -55,6 +55,7 @@ main :: proc(){
 			case "debug-tokens": debug_tokens = true
 			case "debug-parse": debug_parse = true
 			case "debug-gen": debug_gen = true
+			case "debug-tac": debug_tac = true
 			case "debug-run": debug_run = true
 			case "check": only_check = true
 			case "help": print_help()
@@ -70,8 +71,10 @@ main :: proc(){
 	scope, err := parse_and_check(program_name)
 	if err do return
 
+	if debug_gen do println("---------------------------------------------------------------------------")
 	block := generate_bytecode(scope, nil, nil)
-	if debug_gen {
+	if debug_gen do println("---------------------------------------------------------------------------")
+	if debug_tac {
 		println("---------------------------------------------------------------------------")
 		print_program(block)
 		println("---------------------------------------------------------------------------")
@@ -216,4 +219,31 @@ print_scope :: proc(scope_name: Name, scope: ^Scope, depth: int) {
 		for i in 0..<depth-1 do pf("\t")
 		pf("}\n")
 	}
+}
+
+print_statement :: proc(statement: Statement, scope: ^Scope, depth: int) {
+	pf :: fmt.printf
+	for i in 0..<depth do pf("\t")
+	do_semicolon := true
+	if statement.kind == .ASSI {
+		for v in statement.left do pf("%v ", v)
+		pf("= ")
+	}
+	right_loop: for v, i in statement.right do switch q in v {
+		case Value: pf("%v ", q)
+		case Name: pf("%v ", q)
+		case Type: pf("%v ", type_strings[q - Type(1)])
+		case Instruction:
+			if q == .I_LABEL {
+				namae := statement.right[1].(Name)
+//				for i in 0..<depth do pf("\b"); pf(" ")
+//				print_scope(namae, scope.decfineds[namae].content.(^Scope), depth + 1)
+//				do_semicolon = false
+				pf("%v :: <scope> ", namae)
+				break right_loop
+			} else do pf("%v ", instruction_strings[q - Instruction(1)])
+		case ^Scope: print_scope("", scope, depth + 1)
+		case: pf("INVALID TOKEN")
+	}
+	if do_semicolon do pf("\b;\n")
 }

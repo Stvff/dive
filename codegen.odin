@@ -37,8 +37,8 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 
 		stack_offsets.frame_size = stack_offsets.vars_8B + 8*amounts.vars_8B
 		local_stack_push := (stack_offsets.frame_size - stack_offsets.vars_1B)/8
-		if scope.kind == .PROC do add_tac(&block, .PUSH, Word{i = local_stack_push})
-		else do add_tac(&block, .PUSH, Word{i = local_stack_push + 2})
+		if scope.kind == .PROC do add_tac(&block, .PUSH, {i = local_stack_push})
+		else do add_tac(&block, .PUSH, {i = local_stack_push + 2})
 	}
 //	println(stack_offsets)
 
@@ -113,11 +113,15 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 	for name in scope.names_inbody {/* pre-compile inner scopes	*/
 		decf := scope.decfineds[name]
 		if decf.type == .T_BLOC {
+			if debug_gen do printf("\n%v :: bloc{{\n", name)
 			new_block := generate_bytecode(decf.content.(^Scope), &var_places, stack_offsets)
 			blocs[name] = new_block
+			if debug_gen do printf("} <closes bloc %v>\n\n", name)
 		} else if decf.type == .T_PROC {
+			if debug_gen do printf("\n%v :: proc{{\n", name)
 			new_block := generate_bytecode(decf.content.(^Scope), &var_places, nil)
 			procs[name] = new_block
+			if debug_gen do printf("} <closes proc %v>\n\n", name)
 		}
 	}
 //	println(var_places)
@@ -125,8 +129,10 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 
 	gen_loop: for statement in scope.statements {
 		if len(statement.right) == 0 do continue gen_loop
-//		println(statement.left, statement.right)
 		long_assignment := false
+		if debug_gen {
+			print_statement(statement, scope, 0)
+		}
 
 		switch q in statement.right[0] {
 		case Value:
@@ -149,12 +155,13 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			right_type := type_of_valthing(statement.right[1], scope)
 			add_MOV_2R_tac(1, right_type, statement.right[1], &block, &var_places, scope)
 			lt, rt := left.type, right_type
-			if lt >= .T_U8 && lt <= .T_S64 && rt == .T_F32 do add_tac(&block, .CAST_F4_TO_S8, Word{i=0}, Word{i=1})
-			else if lt == .T_F32 && rt >= .T_U8 && rt <= .T_S64 do add_tac(&block, .CAST_S8_TO_F4, Word{i=0}, Word{i=1})
-			else if lt >= .T_U8 && lt <= .T_S64 && (rt == .T_F64 || rt == .T_FLOAT) do add_tac(&block, .CAST_F8_TO_S8, Word{i=0}, Word{i=1})
-			else if lt == .T_F64 && rt >= .T_U8 && rt <= .T_S64 do add_tac(&block, .CAST_S8_TO_F8, Word{i=0}, Word{i=1})
-			else if lt == .T_F64 && rt == .T_F32 do add_tac(&block, .CAST_F4_TO_F8, Word{i=0}, Word{i=1})
-			else if lt == .T_F32 && (rt == .T_F64 || rt == .T_F64) do add_tac(&block, .CAST_F8_TO_F4, Word{i=0}, Word{i=1})
+			if lt >= .T_U8 && lt <= .T_S64 && rt == .T_F32 do add_tac(&block, .CAST_F4_TO_S8, {i=0}, {i=1})
+			else if lt == .T_F32 && rt >= .T_U8 && rt <= .T_S64 do add_tac(&block, .CAST_S8_TO_F4, {i=0}, {i=1})
+			else if lt >= .T_U8 && lt <= .T_S64 && (rt == .T_F64 || rt == .T_FLOAT) do add_tac(&block, .CAST_F8_TO_S8, {i=0}, {i=1})
+			else if lt == .T_F64 && rt >= .T_U8 && rt <= .T_S64 do add_tac(&block, .CAST_S8_TO_F8, {i=0}, {i=1})
+			else if lt == .T_F64 && rt == .T_F32 do add_tac(&block, .CAST_F4_TO_F8, {i=0}, {i=1})
+			else if lt == .T_F32 && (rt == .T_F64 || rt == .T_F64) do add_tac(&block, .CAST_F8_TO_F4, {i=0}, {i=1})
+			else do add_tac(&block, .MOV_8B_R2R, {i = 0}, {i = 1})
 			add_MOV_R2M_tac(left.place, left.type, 0, &block)
 		case .I_TRANS: /* OPTIM: Turn vars of same size into single movs */
 			left := retrieve_var_place(statement.left[0], &var_places)
@@ -165,28 +172,28 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			left := retrieve_var_place(statement.left[0], &var_places)
 			right := retrieve_var_place(statement.right[1].(Name), &var_places)
 			op_code := Op_code.READ_1B + log2[size_of_type[left.type]]
-			add_tac(&block, op_code, Word{i=left.place}, Word{i=right.place})
+			add_tac(&block, op_code, {i=left.place}, {i=right.place})
 		case .I_WRITE:
 			left := retrieve_var_place(statement.right[1].(Name), &var_places)
 			right := retrieve_var_place(statement.right[2].(Name), &var_places)
 			op_code := Op_code.WRITE_1B + log2[size_of_type[right.type]]
-			add_tac(&block, op_code, Word{i=left.place}, Word{i=right.place})
+			add_tac(&block, op_code, {i=left.place}, {i=right.place})
 		case .I_ADDR:
 			left := retrieve_var_place(statement.left[0], &var_places)
 			right := retrieve_var_place(statement.right[1].(Name), &var_places)
-			add_tac(&block, .ADDR, Word{i=left.place}, Word{i=right.place})
+			add_tac(&block, .ADDR, {i=left.place}, {i=right.place})
 		case .I_CALL:
 			to_be_called_decf, _ := visible_decfined(scope, statement.right[1].(Name))
 			tbc := to_be_called_decf.content.(^Scope)
 			smol_push := 2 + len(tbc.parameters_output) + len(tbc.parameters_input)
-			add_tac(&block, .PUSH, Word{i = smol_push})
+			add_tac(&block, .PUSH, {i = smol_push})
 			offset_to_input_params := stack_offsets.frame_size + 8*(2 + len(tbc.parameters_output))
 			for it in 2..<len(statement.right) {
 				right_type := type_of_valthing(statement.right[it], scope)
 				add_MOV_2M_tac(offset_to_input_params + 8*(it - 2), right_type, statement.right[it], &block, &var_places, scope)
 			}
-			add_tac(&block, .WINDUP, Word{i = stack_offsets.frame_size/8}, Word{i = 1})
-			add_tac(&block, .JUMP, Word{/* will be filled out later */})
+			add_tac(&block, .WINDUP, {i = stack_offsets.frame_size/8}, {i = 1})
+			add_tac(&block, .JUMP, {/* will be filled out later */})
 			unres := Unresolved_name{
 				false,
 				statement.right[1].(Name),
@@ -199,13 +206,13 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 				left := retrieve_var_place(statement.left[it], &var_places)
 				add_MOV_M2M_tac(left.place, left.type, offset_to_output_params + 8*it, &block)
 			}
-			add_tac(&block, .POP, Word{i = smol_push})
+			add_tac(&block, .POP, {i = smol_push})
 		case .I_RETURN:
 			caller_mem := stack_offsets.vars_1B/8
-			add_tac(&block, .POP, Word{i = stack_offsets.frame_size/8 - caller_mem})
-			add_tac(&block, .DYN_JUMP, Word{i = 8})
-		case .I_ADD, .I_SUB, .I_MUL, .I_DIV: /* OPTIM: ADD and SUB etc that operate on stack vars too */
-			op_codes := [?]Op_code{.ADD_UINT, .SUB_UINT, .MUL_UINT, .DIV_UINT}
+			add_tac(&block, .POP, {i = stack_offsets.frame_size/8 - caller_mem})
+			add_tac(&block, .DYN_JUMP, {i = 8})
+		case .I_ADD, .I_SUB, .I_MUL, .I_DIV, .I_MOD: /* OPTIM: ADD and SUB etc that operate on stack vars too */
+			op_codes := [?]Op_code{.ADD_UINT, .SUB_UINT, .MUL_UINT, .DIV_UINT, .MOD_UINT}
 			left := retrieve_var_place(statement.left[0], &var_places)
 			add_MOV_2R_tac(1, left.type, statement.right[1], &block, &var_places, scope)
 			add_MOV_2R_tac(2, left.type, statement.right[2], &block, &var_places, scope)
@@ -216,6 +223,18 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			else if lt == .T_F64 do op_code += Op_code(3)
 			add_tac(&block, op_code)
 			add_MOV_R2M_tac(left.place, left.type, 0, &block)
+		case .I_AND, .I_OR, .I_XOR:
+			left := retrieve_var_place(statement.left[0], &var_places)
+			add_MOV_2R_tac(1, left.type, statement.right[1], &block, &var_places, scope)
+			add_MOV_2R_tac(2, left.type, statement.right[2], &block, &var_places, scope)
+			op_codes := [?]Op_code{.AND, .OR, .XOR}
+			op_code := op_codes[statement.right[0].(Instruction) - Instruction.I_AND]
+			add_tac(&block, op_code, {i = 0}, {i = 1}, {i = 2})
+			add_MOV_R2M_tac(left.place, left.type, 0, &block)
+		case .I_NOT:
+			left := retrieve_var_place(statement.left[0], &var_places)
+			add_MOV_2R_tac(1, left.type, statement.right[1], &block, &var_places, scope)
+			add_tac(&block, .NOT, {i = 0}, {i = 1})
 		case .I_GROWS:
 			right_type := type_of_valthing(statement.right[1], scope)
 			add_MOV_2R_tac(1, right_type, statement.right[1], &block, &var_places, scope)
@@ -252,7 +271,7 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 		case .I_IF:
 			right_type := type_of_valthing(statement.right[1], scope)
 			add_MOV_2R_tac(0, right_type, statement.right[1], &block, &var_places, scope)
-			add_tac(&block, .JUMP_IF, Word{/* will be filled out later */})
+			add_tac(&block, .JUMP_IF, {/* will be filled out later */})
 			unres := Unresolved_name{
 				false,
 				statement.right[2].(Name),
@@ -262,7 +281,7 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 		case .I_IFN:
 			right_type := type_of_valthing(statement.right[1], scope)
 			add_MOV_2R_tac(0, right_type, statement.right[1], &block, &var_places, scope)
-			add_tac(&block, .JUMP_IFN, Word{/* will be filled out later */})
+			add_tac(&block, .JUMP_IFN, {/* will be filled out later */})
 			unres := Unresolved_name{
 				false,
 				statement.right[2].(Name),
@@ -270,7 +289,7 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			}
 			append(&block.labels_still_unresolved, unres)
 		case .I_SKIP:
-			add_tac(&block, .JUMP, Word{/* will be filled out later */})
+			add_tac(&block, .JUMP, {/* will be filled out later */})
 			unres := Unresolved_name{
 				true,
 				statement.right[1].(Name),
@@ -297,20 +316,22 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 
 			arity := len(statement.right)
 			if arity > 2 {
-				add_tac(&block, .PUSH, Word{i = arity - 2})
-				add_tac(&block, .MOV_I2R, Word{i = 2}, Word{sint_8B = i64(stack_offsets.frame_size)})
+				add_tac(&block, .PUSH, {i = arity - 2})
+				add_tac(&block, .MOV_I2R, {i = 2}, {sint_8B = i64(stack_offsets.frame_size)})
 				offset_to_args := stack_offsets.frame_size
 				for j in 2..<arity {
 					right_type := type_of_valthing(statement.right[j], scope)
 					add_MOV_2M_tac(offset_to_args + 8*(j - 2), right_type, statement.right[j], &block, &var_places, scope)
 				}
 			}
-			add_tac(&block, .SYSCALL_0 + Op_code(arity - 2), Word{i = 0}, Word{i = 1}, Word{i = 2})
+			add_tac(&block, .SYSCALL_0 + Op_code(arity - 2), {i = 0}, {i = 1}, {i = 2})
 			if arity > 2 {
-				add_tac(&block, .POP, Word{i = arity - 2})
+				add_tac(&block, .POP, {i = arity - 2})
 			}
 			left := retrieve_var_place(statement.left[0], &var_places)
 			add_MOV_R2M_tac(left.place, left.type, 0, &block)
+		case .I_DEBUG:
+			add_tac(&block, .DEBUG)
 		} /* closes instruction switch statement */
 		case ^Scope: panic("No idea how to deal with scope in a codegen statement")
 		} /* closes switch statement that goes over the first thing in a statement */
@@ -323,7 +344,7 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			}
 			if len(statement.left) > 4 {
 				/* OPTIM: Make this allocate in a more packed way */
-				add_tac(&block, .PUSH, Word{i = len(statement.left) - 4})
+				add_tac(&block, .PUSH, {i = len(statement.left) - 4})
 				for j in 4..<len(statement.left) {
 					left_type := retrieve_var_place(statement.left[j], &var_places).type
 					add_MOV_2M_tac(stack_offsets.frame_size + 8*(j - 4), left_type, statement.right[j], &block, &var_places, scope)
@@ -332,7 +353,7 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 					left := retrieve_var_place(statement.left[j], &var_places)
 					add_MOV_M2M_tac(left.place, left.type, stack_offsets.frame_size + 8*(j - 4), &block)
 				}
-				add_tac(&block, .POP, Word{i = len(statement.left) - 4})
+				add_tac(&block, .POP, {i = len(statement.left) - 4})
 			}
 			for j in 0..<REGISTER_AMOUNT {
 				if j >= len(statement.left) do break
@@ -344,13 +365,13 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 
 	if scope.kind == .PROC {
 		caller_mem := stack_offsets.vars_1B/8
-		add_tac(&block, .POP, Word{i = stack_offsets.frame_size/8 - caller_mem})
-		add_tac(&block, .DYN_JUMP, Word{i = 8})
+		add_tac(&block, .POP, {i = stack_offsets.frame_size/8 - caller_mem})
+		add_tac(&block, .DYN_JUMP, {i = 8})
 	} else if scope.kind == .GLOB {
 		add_tac(&block, .DONE)
 	}
 	for name, proc_block in procs {
-		add_tac(&block, .JUMP, Word{/* is filled out in 2 lines */})
+		add_tac(&block, .JUMP, {/* is filled out in 2 lines */})
 		offset := len(block.program)
 		block_infos[name] = {offset, len(proc_block.program)}
 		block.program[offset-1].args[0].i = offset + len(proc_block.program)
@@ -382,10 +403,6 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 	delete(block.labels_still_unresolved)
 	block.labels_still_unresolved = new_unresolved
 
-//	println(block.labels_still_unresolved)
-//	println(block.labels_to_be_offset)
-//	println("---------------------------------------------------------------------------")
-//	print_program(block)
 	return block
 }
 
@@ -393,24 +410,24 @@ add_MOV_R2R_tac :: proc(left: int, left_type, right: int, block: ^Block) {
 	assert(left < REGISTER_AMOUNT)
 	assert(right < REGISTER_AMOUNT)
 	op_code := Op_code.MOV_1B_R2R + log2[size_of_type[left_type]]
-	add_tac(block, op_code, Word{i = left}, Word{i = right})
+	add_tac(block, op_code, {i = left}, {i = right})
 }
 
 add_MOV_R2M_tac :: proc(left: int, left_type: Type, right: int, block: ^Block) {
 	assert(right < REGISTER_AMOUNT)
 	op_code := Op_code.MOV_1B_R2M + log2[size_of_type[left_type]]
-	add_tac(block, op_code, Word{i = left}, Word{i = right})
+	add_tac(block, op_code, {i = left}, {i = right})
 }
 
 add_MOV_M2R_tac :: proc(left: int, left_type: Type, right: int, block: ^Block) {
 	assert(left < REGISTER_AMOUNT)
 	op_code := Op_code.MOV_1B_M2R + log2[size_of_type[left_type]]
-	add_tac(block, op_code, Word{i = left}, Word{i = right})
+	add_tac(block, op_code, {i = left}, {i = right})
 }
 
 add_MOV_M2M_tac :: proc(left: int, left_type: Type, right: int, block: ^Block) {
 	op_code := Op_code.MOV_1B_M2M + log2[size_of_type[left_type]]
-	add_tac(block, op_code, Word{i = left}, Word{i = right})
+	add_tac(block, op_code, {i = left}, {i = right})
 }
 
 add_MOV_2R_tac :: proc(reg: int, left: Type, right: Valthing, block: ^Block, var_places: ^Var_places, scope: ^Scope){
@@ -420,26 +437,26 @@ add_MOV_2R_tac :: proc(reg: int, left: Type, right: Valthing, block: ^Block, var
 	if val, is_value := right.(Value); is_value {
 		op_code = .MOV_I2R
 		if left == .T_F32 {
-			right_word = Word{float_4B = f32(val.(f64))}
+			right_word = {float_4B = f32(val.(f64))}
 		} else if left == .T_F64 || left == .T_FLOAT {
-			right_word = Word{float_8B = val.(f64)}
-		} else do right_word = Word{sint_8B = i64(val.(int))}
+			right_word = {float_8B = val.(f64)}
+		} else do right_word = {sint_8B = i64(val.(int))}
 	} else if name, is_name := right.(Name); is_name {
 		decf, _ := visible_decfined(scope, name)
 		if decf.is_variable {
 			right_var := retrieve_var_place(name, var_places)
 			op_code = .MOV_1B_M2R + log2[size_of_type[right_var.type]]
-			right_word = Word{i = right_var.place}
+			right_word = {i = right_var.place}
 		} else {
 			op_code = Op_code.MOV_I2R
 			if left == .T_F32 {
-				right_word = Word{float_4B = f32(decf.content.(Value).(f64))}
+				right_word = {float_4B = f32(decf.content.(Value).(f64))}
 			} else if left == .T_F64 || left == .T_FLOAT {
-				right_word = Word{float_8B = decf.content.(Value).(f64)}
-			} else do right_word = Word{sint_8B = i64(decf.content.(Value).(int))}
+				right_word = {float_8B = decf.content.(Value).(f64)}
+			} else do right_word = {sint_8B = i64(decf.content.(Value).(int))}
 		}
 	} else do panic("expected value or name")
-	add_tac(block, op_code, Word{i = reg}, right_word)
+	add_tac(block, op_code, {i = reg}, right_word)
 }
 
 add_MOV_2M_tac :: proc(left: int, left_type: Type, right: Valthing, block: ^Block, var_places: ^Var_places, scope: ^Scope){
@@ -448,26 +465,26 @@ add_MOV_2M_tac :: proc(left: int, left_type: Type, right: Valthing, block: ^Bloc
 	if val, is_value := right.(Value); is_value {
 		op_code = .MOV_1B_I2M + log2[size_of_type[left_type]]
 		if left_type == .T_F32 {
-			right_word = Word{float_4B = f32(val.(f64))}
+			right_word = {float_4B = f32(val.(f64))}
 		} else if left_type == .T_F64 || left_type == .T_FLOAT {
-			right_word = Word{float_8B = val.(f64)}
-		} else do right_word = Word{sint_8B = i64(val.(int))}
+			right_word = {float_8B = val.(f64)}
+		} else do right_word = {sint_8B = i64(val.(int))}
 	} else if name, is_name := right.(Name); is_name {
 		decf, _ := visible_decfined(scope, name)
 		if decf.is_variable {
 			right_var := retrieve_var_place(name, var_places)
 			op_code = .MOV_1B_M2M + log2[size_of_type[right_var.type]]
-			right_word = Word{i = right_var.place}
+			right_word = {i = right_var.place}
 		} else {
 			op_code = Op_code.MOV_1B_I2M + log2[size_of_type[left_type]]
 			if left_type == .T_F32 {
-				right_word = Word{float_4B = f32(decf.content.(Value).(f64))}
+				right_word = {float_4B = f32(decf.content.(Value).(f64))}
 			} else if left_type == .T_F64 || left_type == .T_FLOAT {
-				right_word = Word{float_8B = decf.content.(Value).(f64)}
-			} else do right_word = Word{sint_8B = i64(decf.content.(Value).(int))}
+				right_word = {float_8B = decf.content.(Value).(f64)}
+			} else do right_word = {sint_8B = i64(decf.content.(Value).(int))}
 		}
 	} else do panic("expected value or name")
-	add_tac(block, op_code, Word{i = left}, right_word)
+	add_tac(block, op_code, {i = left}, right_word)
 }
 
 retrieve_var_place :: proc(name: Name, var_places: ^Var_places) -> Var_info {
@@ -485,6 +502,10 @@ add_tac :: proc(block: ^Block, op_code: Op_code, a0 := Word{}, a1 := Word{}, a2 
 		{a0, a1, a2}
 	}
 	append(&block.program, tac)
+	if debug_gen {
+		printf("\t | ")
+		print_tac(tac)
+	}
 }
 
 collect_variables :: proc(scope: ^Scope, amounts: ^Var_ams, do_recurse: bool) {

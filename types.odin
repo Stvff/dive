@@ -26,13 +26,15 @@ Op_code :: enum i64 {ERR,
 	WRITE_1B, WRITE_2B, WRITE_4B, WRITE_8B,
 	ADDR,
 
-//	CALL, PUSH, RETURN, POST_CALL,
 	WINDUP, PUSH, POP, REWIND,
 
 	ADD_UINT, ADD_SINT, ADD_F32, ADD_F64,
 	SUB_UINT, SUB_SINT, SUB_F32, SUB_F64,
 	MUL_UINT, MUL_SINT, MUL_F32, MUL_F64,
 	DIV_UINT, DIV_SINT, DIV_F32, DIV_F64,
+	MOD_UINT, MOD_SINT,
+
+	AND, OR, XOR, NOT,
 
 	GROWS_UINT, GROWS_SINT, GROWS_F32, GROWS_F64,
 	SHNKS_UINT, SHNKS_SINT, SHNKS_F32, SHNKS_F64,
@@ -42,6 +44,8 @@ Op_code :: enum i64 {ERR,
 	JUMP, DYN_JUMP,
 
 	SYSCALL_0, SYSCALL_1, SYSCALL_2, SYSCALL_3, SYSCALL_4, SYSCALL_5, SYSCALL_6,
+
+	DEBUG,
 
 	DONE,
 }
@@ -174,10 +178,11 @@ Instruction :: enum{ /* synchronize this with Keyword enum */
 	I_UNKNOWN,
 	I_CAST, I_TRANS, I_READ, I_WRITE, I_ADDR,
 	I_CALL, I_RETURN,
-	I_ADD, I_SUB, I_MUL, I_DIV,
+	I_ADD, I_SUB, I_MUL, I_DIV, I_MOD,
+	I_AND, I_OR, I_XOR, I_NOT,
 	I_GROWS, I_SHNKS, I_EQU,
 	I_IF, I_IFN, I_SKIP,
-	I_SYSCALL,
+	I_SYSCALL, I_DEBUG,
 	I_LABEL,
 }
 
@@ -194,16 +199,17 @@ Program_string_info :: struct{
 	name: string,
 	body: string `fmt:"-"`, /* this random string is for telling fmt.print* to ignore this */
 }
-
+/* IDEA: `logic` instruction, that takes a logic table */
 Keyword :: enum { /* synchronize this with the string arrays */
 	K_ERROR,
 	K_INSTRUCTIONS_START, /* synchronize this with Instruction enum */
 		K_CAST, K_TRANS, K_READ, K_WRITE, K_ADDR,
 		K_CALL, K_RETURN,
-		K_ADD, K_SUB, K_MUL, K_DIV,
+		K_ADD, K_SUB, K_MUL, K_DIV, K_MOD,
+		K_AND, K_OR, K_XOR, K_NOT,
 		K_GROWS, K_SHNKS, K_EQU,
 		K_IF, K_IFN, K_SKIP,
-		K_SYSCALL,
+		K_SYSCALL, K_DEBUG,
 	K_INSTRUCTIONS_END,
 
 	K_DEFINE, K_ARG_SEPERATOR, K_IMPORT,
@@ -224,10 +230,12 @@ Keyword :: enum { /* synchronize this with the string arrays */
 instruction_strings := [?]string{
 	"cast", "trans", "read", "write", "addr",
 	"call", "return", "add",
-	"sub", "mul", "div",
+	"sub", "mul", "div", "mod",
+	"and", "or", "xor", "not",
 	"grows", "shnks", "equ",
 	"if", "ifn", "skip",
-	"syscall"
+	"syscall",
+	"debug"
 }
 type_strings := [?]string{
 	"byte", "u8", "s8", "u16", "s16",

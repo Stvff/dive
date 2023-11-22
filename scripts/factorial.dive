@@ -1,6 +1,8 @@
+import print.dive;
 
 total: u64;
 total = call factorial 10;
+call println_u64 total;
 
 factorial :: (n: u64 -- m: u64) {
 	is_zero: u8;

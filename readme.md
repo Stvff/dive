@@ -6,8 +6,11 @@ Furthermore, variables are statically and strongly typed with a basic typesystem
 
 As it is now, it is a very limited language, but I hope to add many things to bring it up to modern standards ([see the 'Todo' section](#to-do)).
 ```
+import print.dive;
+
 total: u64;
 total = call factorial 10;
+call println_u64 total;
 
 factorial :: (n: u64 -- m: u64) {
 	is_zero: u8;
@@ -154,6 +157,11 @@ Currently, circular imports _will_ form a recursion loop, so be aware!
 |`sub`   | a number              | two numbers of the same type | subtracts |
 |`mul`   | a number              | two numbers of the same type | multiplies |
 |`div`   | a number              | two numbers of the same type | divides |
+|`mod`   | an integer            | two integers                 | modulo |
+|`and`   | any type              | two values of any type       | bitwise logical and |
+|`or`    | any type              | two values of any type       | bitwise logical or |
+|`xor`   | any type              | two values of any type       | bitwise logical exclusive or |
+|`not`   | any type              | any type                     | bitwise complement |
 |`grows` | an integer (1 or 0)   | two numbers of the same type | checks if the two arguments are increasing, when read from left to right, and returns 1 if they are |
 |`shnks` | an integer (1 or 0)   | two numbers of the same type | checks if the two arguments are decreasing, when read from left to right, and returns 1 if they are |
 |`equ`   | an integer (1 or 0)   | two numbers of the same type | checks if the two arguments are equal, and returns 1 if they are |
