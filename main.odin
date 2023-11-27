@@ -31,6 +31,7 @@ print_help :: proc() {
 		-debug-tokens
 		-debug-parse
 		-debug-gen
+		-debug-tac
 		-debug-run
 		-help
 
@@ -81,7 +82,7 @@ main :: proc(){
 	}
 	if only_check do return
 
-	run(block.program[:], debug_run)
+	run(block.program[:])
 }
 
 parse_and_check :: proc(program_name: string) -> (^Scope, bool) {
@@ -236,9 +237,6 @@ print_statement :: proc(statement: Statement, scope: ^Scope, depth: int) {
 		case Instruction:
 			if q == .I_LABEL {
 				namae := statement.right[1].(Name)
-//				for i in 0..<depth do pf("\b"); pf(" ")
-//				print_scope(namae, scope.decfineds[namae].content.(^Scope), depth + 1)
-//				do_semicolon = false
 				pf("%v :: <scope> ", namae)
 				break right_loop
 			} else do pf("%v ", instruction_strings[q - Instruction(1)])

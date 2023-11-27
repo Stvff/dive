@@ -12,8 +12,7 @@ e: s64;
 e = add b ff;
 c = add a e;
 e = sub 1000 c;
-ifn e place2;
-skip place2;
+skip_if e place2;
 place2 :: {
 	ifn c place;
 }

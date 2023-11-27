@@ -354,19 +354,20 @@ check_expression :: proc(scope: ^Scope, desired: []Type, expression: []Valthing,
 					}
 					expression = expression[2:]
 					right_poslens = right_poslens[2:]
-				case .I_SKIP:
-					if len(expression) != 2 || len(desired) != 0 {
-						print_error("`skip` takes a label and produces no values.", right_poslens[0])
+				case .I_SKIP_IF, .I_SKIP_IFN:
+					if len(expression) != 3 || len(desired) != 0 {
+						print_error("`skip_if` and `skip_ifn` take a value and a label and produce no value.", right_poslens[0])
 						err = true
 						continue main_loop
 					}
-					if check_expression(scope, {.T_BLOC}, expression[1:], {right_poslens[0]}, right_poslens[1:]) {
-						print_error("`skip` only takes a label.", right_poslens[0])
+					expd_type := type_of_valthing(expression[1], scope)
+					if check_expression(scope, {expd_type, .T_BLOC}, expression[1:], {right_poslens[0], right_poslens[0]}, right_poslens[1:]) {
+						print_error("`skip_if` and `skip_ifn` take a value and a label and produce no value.", right_poslens[0])
 						err = true
 						continue main_loop
 					}
-					expression = expression[1:]
-					right_poslens = right_poslens[1:]
+					expression = expression[2:]
+					right_poslens = right_poslens[2:]
 				case .I_SYSCALL:
 					if len(expression) < 2 || len(expression) > 8 || len(desired) != 1 {
 						print_error("`syscall` takes anywhere from 1 to 6 arguments, and produces 1 value.", right_poslens[0])

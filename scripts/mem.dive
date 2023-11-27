@@ -1,3 +1,11 @@
+
+< gets the length of an array allocated with `alloc` >
+array_cap :: (array: ptr; typesize: s64 -- length: s64) {
+	array = sub array, 8;
+	length = read array;
+	length = div length, typesize;
+}
+
 < This memory maps the appropriately sized region >
 alloc :: (size: s64 -- memp: ptr; errno: s32) {
 	usize: u64;
@@ -19,7 +27,8 @@ alloc :: (size: s64 -- memp: ptr; errno: s32) {
 }
 
 < Frees a thing allocated with `alloc` >
-free :: (memp: ptr -- zeroed_ptr: ptr; errno: s32) {
+free :: (memp: ptr -- zeroed_ptr: ptr) {
+	errno: s32;
 	ifn memp, exit;
 
 	base_memp, usize: ptr, u64;

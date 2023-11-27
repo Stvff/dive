@@ -1,10 +1,10 @@
-print_demo :: {
-	n: s64;
+small_print_test :: {
 	call println_u64 0;
 	call println 1;
 	call println_u64 42;
 	call println 1;
 	call println_u64 -1;
+	call println 1;
 }
 
 import mem.dive;
@@ -15,24 +15,66 @@ ASCII_ZERO :: 48;
 ASCII_A_LOWER :: 97;
 ASCII_U_UPPER :: 65;
 
+append_char :: (buffer: ptr; buffer_len: s64; char: byte -- new_buffer: ptr; new_buffer_len: s64) {
+	< TODO: make this realloc >
+	new_buffer_len = add buffer_len, 1;
+	new_buffer = buffer;
+	temp: ptr;
+	temp = add buffer, buffer_len;
+	write temp, char;
+}
+
+print_string :: (string: ptr; length: s64) {
+	err: s32;
+	length, err = call write_file Stdout, string, length;
+}
+
 println_u64 :: (integer: u64) {
-	amount_written: s64;
-	bufsize: ptr; bufsize = 64;
+	buf, buf_len, printed: ptr, s64, s64;
 
-	buffer, err: ptr, s32;
-	buffer, err = call alloc bufsize;
-	if err, exit;
+	buf, buf_len, printed = call print_u64_to_buffer buf, buf_len, integer;
+	buf, buf_len = call append_char buf, buf_len, ASCII_NEWLINE;
+	call print_string buf, buf_len;
 
-	character, index: byte, ptr;
+	buf = call free buf;
+}
 
-	suffix_newline :: {
-		character = ASCII_NEWLINE;
-		index = add buffer, bufsize;
-		index = sub index, 1;
-		write index, character;
+<
+  prints the u64 to a buffer, which it allocates if buffer is 0
+  if `printed` is 0, there was an allocation error
+  (TODO: reallocate in this case)
+>
+print_u64_to_buffer :: (buffer: ptr; buffer_len: s64; integer: u64 -- new_buffer: ptr; new_buffer_len: s64; printed: s64) {
+	u64_strlen: s64;
+	intcopy: u64; intcopy = integer;
+	log10_loop :: {
+		u64_strlen = add u64_strlen, 1;
+		intcopy = div intcopy 10;
+		if intcopy, log10_loop;
 	}
 
-	loop :: {
+	check_buffer_size :: {
+		correct_size: u8;
+		correct_size = grows u64_strlen, buffer_len;
+		skip_if correct_size, allocate_new_buffer;
+		skip_if buffer, allocate_new_buffer;
+	}
+	allocate_new_buffer :: {
+		buffer_len = mul u64_strlen, 2;
+		err: s32;
+		buffer, err = call alloc buffer_len;
+		buffer_len = add u64_strlen, 1;
+		if err, exit;
+	}
+	new_buffer = buffer;
+	new_buffer_len = buffer_len;
+	printed = u64_strlen;
+
+	character: byte;
+	index: ptr;
+	index = add buffer, buffer_len;
+
+	print_loop :: {
 		remainder, digit: u64, byte;
 
 		remainder = mod integer, 10;
@@ -44,26 +86,16 @@ println_u64 :: (integer: u64) {
 
 		index = sub index, 1;
 		write index, character;
-		if integer, loop;
+		if integer, print_loop;
 	}
 
-	write_to_stdout :: {
-		bufsize = sub index, buffer;
-		amount_written, err = call write_file Stdout, index, bufsize;
-		if err, exit;
-	}
-
-	exit :: {
-		buffer, err = call free buffer;
-		return;
-	}
+	exit :: {return;}
 }
 
 println :: (amount: u32) {
 	newline: byte; newline = ASCII_NEWLINE;
 	buffer: ptr; buffer = addr newline;
-	if amount, write_loop;
-	return;
+	skip_ifn amount, write_loop;
 	write_loop :: {
 		a, e: s64, s32;
 		a, e = call write_file, Stdout, buffer, 1;

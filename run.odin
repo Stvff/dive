@@ -4,20 +4,15 @@ import "core:intrinsics"
 
 /* TODO: make all instructions that rely on registers implicitly do that explicitly.
          examples are: add, sub, mul, div, if, ifn */
-run :: proc(program: []Tac, debug: bool) #no_bounds_check {
+run :: proc(program: []Tac) #no_bounds_check {
 	NIL :: Word{}
 	stack_allocated: int
 	ip, sp: int
 	regs: [REGISTER_AMOUNT]Word
 	stack: [STACK_SIZE]Word
-	defer if debug {
-		println("---------------------------------------------------------------------------")
-		for i in 0..<stack_allocated{
-			word := stack[i]
-			printf("0x%x: 0x%x, 0d%v, f%v, f%v\n", i*8, word.i, word.i, word.float_4B, word.float_8B)
-		}
-		println("---------------------------------------------------------------------------")
-	}
+
+	Debug_state :: enum{off, on}
+	debug := Debug_state.off
 
 	main_loop: for {
 		defer ip += 1
@@ -25,7 +20,7 @@ run :: proc(program: []Tac, debug: bool) #no_bounds_check {
 		a0 := program[ip].args[0]
 		a1 := program[ip].args[1]
 		a2 := program[ip].args[2]
-		if debug {
+		if debug == .on {
 			printf("ip: 0x%x, sp: 0x%x, stack_allocated: 0x%x\n", ip, 8*sp, 8*stack_allocated)
 			print_tac(program[ip])
 		}
@@ -282,12 +277,7 @@ run :: proc(program: []Tac, debug: bool) #no_bounds_check {
 		regs[a0.i].uptr_8B = intrinsics.syscall(regs[a1.i].uptr_8B, sys_arg1, sys_arg2, sys_arg3, sys_arg4, sys_arg5, sys_arg6)
 
 	case .DEBUG:
-		println("---------------------------------------------------------------------------")
-		for i in sp..<stack_allocated{
-			word := stack[i]
-			printf("0x%x: 0x%x, 0d%v, f%v, f%v\n", i*8, word.i, word.i, word.float_4B, word.float_8B)
-		}
-		println("---------------------------------------------------------------------------")
+		debug = cast(Debug_state) a0.i
 	case .DONE:
 		break main_loop
 	}}

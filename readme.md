@@ -73,8 +73,7 @@ Instructions are in polish notation (so first the instruction, then the values),
 names = instruction values;
 instruction values;
 ```
-All instructions are: `cast`, `trans`, `read`, `write`, `addr`, `call`, `return`, `add`, `sub`, `mul`, `div`, `grows`, `shnks`, `equ`, `if`, `ifn`, `skip` and `syscall`.\
-The [section 'Instructions'](#instructions) contains a table that goes over what each one needs and does.
+The [section 'Instructions'](#instructions) contains a table that goes over each instruction and what they do and need.
 
 Lastly, there are two kinds of code blocks. Procedures, and basic blocks (or just 'blocks').
 A basic block is a set of statements surrounded by curly braces, as in this example:
@@ -88,7 +87,7 @@ name :: {
 }
 ```
 New variables and definitions (including more blocks or procedures) can be made inside of a block, and it can refer to variables and definitions of the scopes above it,
-however, variables and labels above the procedure scope that the block is defined in, can not be used. Instructions that use block labels are `if`, `ifn` and `skip`.
+however, variables and labels above the procedure scope that the block is defined in, can not be used. Instructions that use block labels are `if`, `ifn`, `skip_if` and `skip_ifn`.
 When a program 'jumps' to a basic block, or when the program naturally enters it, it starts executing the instructions in the block, and when the end is reached,
 it continues with the instructions that are defined after the block, and not the instructions after the jump. In other words, basic blocks don't return.
 
@@ -167,8 +166,9 @@ Currently, circular imports _will_ form a recursion loop, so be aware!
 |`equ`   | an integer (1 or 0)   | two numbers of the same type | checks if the two arguments are equal, and returns 1 if they are |
 |`if`    | nothing               | any number and a label       | jumps to the label if its first argument is not equal to zero; 'jump if true' |
 |`ifn`   | nothing               | any number and a label       | jumps to the label if its first argument is equal to zero; 'jump if not true' |
-|`skip`  | nothing               | a label                      | jumps to the end of the basic block that the label refers to |
-|`syscall`| any type             | anywhere from 1 to 6 arguments | preforms a linux syscall |
+|`skip_if` | nothing             | any number and a label       | jumps to the end of block that the label refers to, if its first argument is not equal to zero; 'skip if true' |
+|`skip_if` | nothing             | any number and a label       | jumps to the end of block that the label refers to, if its first argument is equal to zero; 'skip if not true' |
+|`syscall` | any type             | anywhere from 1 to 6 arguments | preforms a linux syscall |
 
 ## Building and usage
 To build the compiler, first install odin, clone this repository, and then run:

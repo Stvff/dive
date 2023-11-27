@@ -181,7 +181,7 @@ Instruction :: enum{ /* synchronize this with Keyword enum */
 	I_ADD, I_SUB, I_MUL, I_DIV, I_MOD,
 	I_AND, I_OR, I_XOR, I_NOT,
 	I_GROWS, I_SHNKS, I_EQU,
-	I_IF, I_IFN, I_SKIP,
+	I_IF, I_IFN, I_SKIP_IF, I_SKIP_IFN,
 	I_SYSCALL, I_DEBUG,
 	I_LABEL,
 }
@@ -208,7 +208,7 @@ Keyword :: enum { /* synchronize this with the string arrays */
 		K_ADD, K_SUB, K_MUL, K_DIV, K_MOD,
 		K_AND, K_OR, K_XOR, K_NOT,
 		K_GROWS, K_SHNKS, K_EQU,
-		K_IF, K_IFN, K_SKIP,
+		K_IF, K_IFN, K_SKIP_IF, K_SKIP_IFN,
 		K_SYSCALL, K_DEBUG,
 	K_INSTRUCTIONS_END,
 
@@ -233,7 +233,7 @@ instruction_strings := [?]string{
 	"sub", "mul", "div", "mod",
 	"and", "or", "xor", "not",
 	"grows", "shnks", "equ",
-	"if", "ifn", "skip",
+	"if", "ifn", "skip_if", "skip_ifn",
 	"syscall",
 	"debug"
 }

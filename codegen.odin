@@ -70,11 +70,13 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 		for name, i in scope.parameters_output {
 			decf := scope.decfineds[name]
 			var_places.vars[name] = {decf.type, o + 8*i}
+			if debug_gen do printf("%v: 0x%x;\n", name, o + 8*i)
 		}
 		o = 16 + 8*len(scope.parameters_output)
 		for name, i in scope.parameters_input {
 			decf := scope.decfineds[name]
 			var_places.vars[name] = {decf.type, o + 8*i}
+			if debug_gen do printf("%v: 0x%x;\n", name, o + 8*i)
 		}
 	}
 	for name in scope.names_inbody {/* figure our where the vars are on the stack */
@@ -86,24 +88,28 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 					decf.type,
 					stack_offsets.vars_1B
 				}
+				if debug_gen do printf("%v: 0x%x;\n", name, stack_offsets.vars_1B)
 				stack_offsets.vars_1B += 1
 			case .T_U16, .T_S16:
 				var_places.vars[name] = {
 					decf.type,
 					stack_offsets.vars_2B
 				}
+				if debug_gen do printf("%v: 0x%x;\n", name, stack_offsets.vars_2B)
 				stack_offsets.vars_2B += 2
 			case .T_U32, .T_S32, .T_F32:
 				var_places.vars[name] = {
 					decf.type,
 					stack_offsets.vars_4B
 				}
+				if debug_gen do printf("%v: 0x%x;\n", name, stack_offsets.vars_4B)
 				stack_offsets.vars_4B += 4
 			case .T_U64, .T_S64, .T_F64, .T_PTR, .T_WORD:
 				var_places.vars[name] = {
 					decf.type,
 					stack_offsets.vars_8B
 				}
+				if debug_gen do printf("%v: 0x%x;\n", name, stack_offsets.vars_8B)
 				stack_offsets.vars_8B += 8
 			case .T_TYPE, .T_INSTCN:
 			case .T_PROC, .T_BLOC:
@@ -288,11 +294,23 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 				{ len(block.program) - 1, 0 }
 			}
 			append(&block.labels_still_unresolved, unres)
-		case .I_SKIP:
-			add_tac(&block, .JUMP, {/* will be filled out later */})
+		case .I_SKIP_IF:
+			right_type := type_of_valthing(statement.right[1], scope)
+			add_MOV_2R_tac(0, right_type, statement.right[1], &block, &var_places, scope)
+			add_tac(&block, .JUMP_IF, {/* will be filled out later */})
 			unres := Unresolved_name{
 				true,
-				statement.right[1].(Name),
+				statement.right[2].(Name),
+				{ len(block.program) - 1, 0 }
+			}
+			append(&block.labels_still_unresolved, unres)
+		case .I_SKIP_IFN:
+			right_type := type_of_valthing(statement.right[1], scope)
+			add_MOV_2R_tac(0, right_type, statement.right[1], &block, &var_places, scope)
+			add_tac(&block, .JUMP_IFN, {/* will be filled out later */})
+			unres := Unresolved_name{
+				true,
+				statement.right[2].(Name),
 				{ len(block.program) - 1, 0 }
 			}
 			append(&block.labels_still_unresolved, unres)
@@ -331,7 +349,7 @@ generate_bytecode :: proc(scope: ^Scope, prev_var_places: ^Var_places, stack_off
 			left := retrieve_var_place(statement.left[0], &var_places)
 			add_MOV_R2M_tac(left.place, left.type, 0, &block)
 		case .I_DEBUG:
-			add_tac(&block, .DEBUG)
+			if debug_run do add_tac(&block, .DEBUG, {i = statement.right[1].(Value).(int)})
 		} /* closes instruction switch statement */
 		case ^Scope: panic("No idea how to deal with scope in a codegen statement")
 		} /* closes switch statement that goes over the first thing in a statement */
