@@ -1,4 +1,4 @@
-import print.dive;
+import basic/print.dive;
 
 demo_fibonacci :: {
 	n: u64;

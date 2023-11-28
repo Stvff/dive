@@ -1,4 +1,3 @@
-
 < gets the length of an array allocated with `alloc` >
 array_cap :: (array: ptr; typesize: s64 -- length: s64) {
 	array = sub array, 8;

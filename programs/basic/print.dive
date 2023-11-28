@@ -15,6 +15,16 @@ ASCII_ZERO :: 48;
 ASCII_A_LOWER :: 97;
 ASCII_U_UPPER :: 65;
 
+println_u64 :: (integer: u64) {
+	buf, buf_len, printed: ptr, s64, s64;
+
+	buf, buf_len, printed = call print_u64_to_buffer buf, buf_len, integer;
+	buf, buf_len = call append_char buf, buf_len, ASCII_NEWLINE;
+	call print_string buf, buf_len;
+
+	buf = call free buf;
+}
+
 append_char :: (buffer: ptr; buffer_len: s64; char: byte -- new_buffer: ptr; new_buffer_len: s64) {
 	< TODO: make this realloc >
 	new_buffer_len = add buffer_len, 1;
@@ -27,16 +37,6 @@ append_char :: (buffer: ptr; buffer_len: s64; char: byte -- new_buffer: ptr; new
 print_string :: (string: ptr; length: s64) {
 	err: s32;
 	length, err = call write_file Stdout, string, length;
-}
-
-println_u64 :: (integer: u64) {
-	buf, buf_len, printed: ptr, s64, s64;
-
-	buf, buf_len, printed = call print_u64_to_buffer buf, buf_len, integer;
-	buf, buf_len = call append_char buf, buf_len, ASCII_NEWLINE;
-	call print_string buf, buf_len;
-
-	buf = call free buf;
 }
 
 <

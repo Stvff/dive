@@ -1,4 +1,4 @@
-import print.dive;
+import basic/print.dive;
 
 total: u64;
 total = call factorial 10;

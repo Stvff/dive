@@ -6,7 +6,7 @@ Furthermore, variables are statically and strongly typed with a basic typesystem
 
 As it is now, it is a very limited language, but I hope to add many things to bring it up to modern standards ([see the 'Todo' section](#to-do)).
 ```
-import print.dive;
+import basic/print.dive;
 
 total: u64;
 total = call factorial 10;
@@ -28,6 +28,8 @@ factorial :: (n: u64 -- m: u64) {
 	}
 }
 ```
+For more basic programs, see the [programs folder](https://github.com/StevenClifford/dive/tree/master/programs).
+Here I'm also building out a [basic library](https://github.com/StevenClifford/dive/tree/master/programs/basic).
 
 ## Syntax and some semantics
 All statements (except scope definitions) end with a semicolon. Comma's are whitespace and therefore optional.\
