@@ -1,0 +1,33 @@
+import print.dive;
+
+demo_fibonacci :: {
+	n: u64;
+	n = call fibonacci 42;
+	call println_u64 n;
+}
+
+fibonacci :: (upto: u64 -- result: u64) {
+	prev: u64;
+	prev = 1;
+	result = 1;
+
+	< This is a very explicit for-loop >
+	< It doesn't have to be anywhere near this explicit >
+	for_loop :: {
+		if 1 check;
+		body :: {
+			now: u64;
+			now = result;
+			result = add prev, result;
+			prev = now;
+		}
+		update :: {
+			upto = sub upto, 1;
+		}
+		check :: {
+			do_loop: u8;
+			do_loop = grows 2, upto;
+			if do_loop, body;
+		}
+	}
+}
