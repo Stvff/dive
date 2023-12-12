@@ -68,10 +68,11 @@ main :: proc(){
 		}
 		program_name = os.args[i]
 	}
-
 	scope, err := parse_and_check(program_name)
 	if err do return
 
+
+/*
 	if debug_gen do println("---------------------------------------------------------------------------")
 	block := generate_bytecode(scope, nil, nil)
 	if debug_gen do println("---------------------------------------------------------------------------")
@@ -83,6 +84,7 @@ main :: proc(){
 	if only_check do return
 
 	run(block.program[:])
+*/
 }
 
 parse_and_check :: proc(program_name: string) -> (^Scope, bool) {
@@ -102,11 +104,16 @@ parse_and_check :: proc(program_name: string) -> (^Scope, bool) {
 	tokens := tokenize(entry_program_info)
 	if debug_tokens {
 		println("---------------------------------------------------------------------------")
-		for tok in tokens do println(tok)
+		for tok in tokens {
+			printf("%v ", tok.t)
+			if tok.t == .K_SEMICOLON do println()
+		}
+		println()
 		println("---------------------------------------------------------------------------")
 	}
 	defer delete(tokens)
 
+/*
 	scope, ltok, parse_err := parse_scope(tokens[:], .GLOB)
 	if parse_err do return scope, parse_err
 
@@ -119,6 +126,8 @@ parse_and_check :: proc(program_name: string) -> (^Scope, bool) {
 	if check(scope) do return scope, true
 
 	return scope, false
+*/
+	return {}, false
 }
 
 

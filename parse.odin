@@ -387,57 +387,59 @@ tokenize :: proc(program_info: ^Program_string_info) -> [dynamic]Token {
 		keyword, is_keyword := keywords[nib.str]
 		token := Token{poslen = {nib.pos, len(nib.str), program_info}}
 		if is_keyword {
-			if keyword == .K_ANGLE_OPEN {
-				comment_nesting += 1
-				continue
-			}
-			if keyword == .K_ANGLE_CLOSE {
-				comment_nesting -= 1
-				continue
-			}
-			if keyword == .K_COLON && prev_token.t == .K_COLON {
-				tokens[len(tokens)-1] = {
-					{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos, program_info},
-					Keyword.K_DEFINE
+			#partial switch keyword {
+				case .K_STAR:
+				if prev_token.t == .K_DIV {
+					pop(&tokens)
+					comment_nesting += 1
+					continue
 				}
-				prev_token = {}
-				continue
-			}
-			if keyword == .K_HYPHEN && prev_token.t == .K_HYPHEN {
-				tokens[len(tokens)-1] = {
-					{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos, program_info},
-					Keyword.K_ARG_SEPERATOR
+				keyword = .K_MUL
+				case .K_RSLASH: if prev_token.t == .K_MUL {
+					comment_nesting -= 1
+					continue
 				}
-				prev_token = {}
-				continue
+				keyword = .K_DIV
+				case .K_COLON: if prev_token.t == .K_COLON {
+					tokens[len(tokens)-1] = {
+						{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos, program_info},
+						Keyword.K_DEFINE
+					}
+					prev_token = {}
+					continue
+				}
+				case .K_HYPHEN:
+				if prev_token.t == .K_HYPHEN {
+					tokens[len(tokens)-1] = {
+						{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos, program_info},
+						Keyword.K_ARG_SEPERATOR
+					}
+					prev_token = {}
+					continue
+				}
+				keyword = .K_SUB
+				case .K_PLUS: keyword = .K_ADD
+				case .K_PERCENT: keyword = .K_MOD
+				case .K_AMPERSAND: keyword = .K_ADDR
+				case .K_CARET: keyword = .K_READ
+				case .K_EQUAL: if prev_token.t == .K_READ {
+					tokens[len(tokens)-1] = {
+						{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos, program_info},
+						Keyword.K_WRITE
+					}
+					prev_token = {}
+				}
 			}
-			if keyword == .K_COMMA do continue
 			token.t = keyword
 		} else if n, is_int := strconv.parse_int(nib.str); is_int {
-			if prev_token.t == .K_HYPHEN {
-				tokens[len(tokens)-1] = {
-					{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos, program_info},
-					-n
-				}
-				prev_token = {}
-				continue
-			}
 			token.t = n
 		} else if f, is_float := strconv.parse_f64(nib.str); is_float {
-			if prev_token.t == .K_HYPHEN {
-				tokens[len(tokens)-1] = {
-					{prev_token.poslen.pos, token.poslen.pos + token.poslen.len - prev_token.poslen.pos, program_info},
-					-f
-				}
-				prev_token = {}
-				continue
-			}
 			token.t = f
 		} else {
 			token.t = nib.str
 		}
+		prev_token = {token.poslen, keyword} if is_keyword else {}
 		if comment_nesting == 0 {
-			prev_token = {token.poslen, keyword} if is_keyword else {}
 			append(&tokens, token)
 		}
 	}

@@ -215,9 +215,12 @@ Keyword :: enum { /* synchronize this with the string arrays */
 	K_DEFINE, K_ARG_SEPERATOR, K_IMPORT,
 
 	K_OPERATORS_START,
-		K_COLON, K_EQUAL, K_PAREN_OPEN, K_PAREN_CLOSE, K_BRACE_OPEN, K_BRACE_CLOSE, K_HYPHEN,
+		K_COLON, K_EQUAL, K_COMMA, K_SEMICOLON,
+		K_PLUS, K_HYPHEN, K_STAR, K_RSLASH, K_PERCENT,
+		K_AMPERSAND, K_CARET,
+
+		K_PAREN_OPEN, K_PAREN_CLOSE, K_BRACE_OPEN, K_BRACE_CLOSE,
 		K_BRACKET_OPEN, K_BRACKET_CLOSE, K_ANGLE_OPEN, K_ANGLE_CLOSE,
-		K_COMMA, K_SEMICOLON,
 	K_OPERATORS_END,
 
 	K_TYPES_START, /* synchronize this with Base_type enum */
@@ -227,10 +230,18 @@ Keyword :: enum { /* synchronize this with the string arrays */
 
 	K_OTHER
 }
+keywords: map[string]Keyword = {
+	"as" = .K_CAST, "trans" = .K_TRANS,
+	"return" = .K_RETURN,
+	"and" = .K_AND, "or" = .K_OR, "xor" = .K_XOR, "not" = .K_NOT,
+	"grows" = .K_GROWS, "shkns" = .K_SHNKS, "equ" = .K_EQU,
+	"if" = .K_IF, "ifn" = .K_IFN, "skip_if" = .K_SKIP_IF, "skip_ifn" = .K_SKIP_IFN,
+	"syscall" = .K_SYSCALL, "debug" = .K_DEBUG
+}
 instruction_strings := [?]string{
-	"cast", "trans", "read", "write", "addr",
-	"call", "return", "add",
-	"sub", "mul", "div", "mod",
+	"as", "trans", "^", "^=", "&",
+	"return",
+	"+", "-", "*", "/", "%",
 	"and", "or", "xor", "not",
 	"grows", "shnks", "equ",
 	"if", "ifn", "skip_if", "skip_ifn",
@@ -243,27 +254,21 @@ type_strings := [?]string{
 	"f32", "f64", "ptr", "word"
 }
 stoptokens :: []rune {
-	':', '=', '(', ')', '{', '}', '-',
-	'[', ']', '<', '>',
-	',', ';'
-}
+	':', '=', ',', ';',
+	'+', '-', '*', '/', '%',
+	'&', '^',
 
-keywords: map[string]Keyword
+	'(', ')', '{', '}',
+	'[', ']', '<', '>',
+}
 
 import "core:unicode/utf8"
 @(private) @(init) init_keywords :: proc() { 
-	k := Keyword.K_INSTRUCTIONS_START + Keyword(1)
-	for str in instruction_strings {
-		keywords[str] = k
-		k += Keyword(1)
-		assert(k <= .K_INSTRUCTIONS_END)
-	}
-
 	keywords["::"] = .K_DEFINE
 	keywords["--"] = .K_ARG_SEPERATOR
 	keywords["import"] = .K_IMPORT
 
-	k = Keyword.K_OPERATORS_START + Keyword(1)
+	k := Keyword.K_OPERATORS_START + Keyword(1)
 	for tok in stoptokens {
 		s := utf8.runes_to_string({tok})
 		keywords[s] = k
